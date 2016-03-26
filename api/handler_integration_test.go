@@ -2,6 +2,7 @@ package api_test
 
 import (
 	"bytes"
+	"fmt"
 	"strconv"
 	"testing"
 	//"errors"
@@ -12,24 +13,28 @@ import (
 	"farm.e-pedion.com/repo/fivecolors/data"
 
 	"farm.e-pedion.com/repo/fivecolors/api"
+	_ "github.com/go-sql-driver/mysql"
 	"github.com/stretchr/testify/assert"
 )
 
 var (
-	setted = false
-	rec    *httptest.ResponseRecorder
-	deckID string
+	setted      = false
+	rec         *httptest.ResponseRecorder
+	deckID      string
+	inventoryID string
 )
 
 func setup() error {
-	data.Setup(&config.DBConfig{
+	setupErr := data.Setup(&config.DBConfig{
 		Driver:   "mysql",
 		URL:      "tcp(127.0.0.1:3306)/fivecolors",
 		Username: "fivecolors",
 		Password: "fivecolors",
 	})
-	setted = true
-	return nil
+	if setupErr != nil {
+		setted = true
+	}
+	return setupErr
 }
 
 func before() error {
@@ -38,7 +43,7 @@ func before() error {
 			return err
 		}
 	}
-    rec = httptest.NewRecorder()
+	rec = httptest.NewRecorder()
 	return nil
 }
 
@@ -115,41 +120,99 @@ func Test_QueryExpansionWithoutParameters(t *testing.T) {
 	getExpansionHandler := api.NewQueryExpansionHandler()
 	getExpansionHandler.ServeHTTP(rec, req)
 
-    assert.Equal(t, http.StatusOK, rec.Code)
+	assert.Equal(t, http.StatusOK, rec.Code)
 	assert.Equal(t, "application/json; charset=utf-8", rec.Header().Get("Content-Type"))
 	assert.NotEqual(t, rec.Body.String(), "")
 }
 
-func Test_PostInventory(t *testing.T) {
+func Test_PostToCreateInventory(t *testing.T) {
 	if beforeErr := before(); beforeErr != nil {
 		assert.Fail(t, beforeErr.Error())
 	}
 	inventoryJSON := `{
-		"id": 1000,
+		"name": "Test_PostToCreateInventory",
 		"cards": [
-            {"id": 2764, "index": "86", "inventoryCard": {"quantity": 1} },
-            {"id": 2884, "index": "90a", "inventoryCard": {"quantity": 15} },
-            {"id": 2791, "index": "2", "inventoryCard": {"quantity": 1} },
-            {"id": 2863, "index": "130", "inventoryCard": {"quantity": 20} }
+            {"id": 2764, "inventoryCard": {"quantity": 1} },
+            {"id": 2884, "inventoryCard": {"quantity": 15} },
+            {"id": 2791, "inventoryCard": {"quantity": 1} },
+            {"id": 2863, "inventoryCard": {"quantity": 20} }
         ]
 	}`
 	req, err := http.NewRequest("POST", "http://mockrequest.com/inventory/", bytes.NewBufferString(inventoryJSON))
 	assert.Nil(t, err)
 
-	postInventoryHandler := api.NewPostInventoryHandler()
+	postInventoryHandler := api.NewInventoryHandler()
+	postInventoryHandler.ServeHTTP(rec, req)
+
+	assert.Equal(t, http.StatusCreated, rec.Code)
+	assert.Equal(t, "application/json; charset=utf-8", rec.Header().Get("Content-Type"))
+	body := rec.Body.String()
+	assert.NotEqual(t, body, "")
+	intInventoryID, convertIDErr := strconv.Atoi(body)
+	assert.Nil(t, convertIDErr)
+	assert.NotEqual(t, intInventoryID, 0)
+	inventoryID = body
+}
+
+func Test_PostToUpdateInventory(t *testing.T) {
+	if beforeErr := before(); beforeErr != nil {
+		assert.Fail(t, beforeErr.Error())
+	}
+	inventoryJSON := fmt.Sprintf(`{
+        "id": %v,
+		"name": "Test_PostToUpdateInventory",
+		"cards": [
+            {"id": 1, "inventoryCard": {"quantity": 4} },
+            {"id": 3, "inventoryCard": {"quantity": 5} },
+            {"id": 5, "inventoryCard": {"quantity": 10} },
+            {"id": 6, "inventoryCard": {"quantity": 2} }
+        ]
+	}`, inventoryID)
+	req, err := http.NewRequest("POST", "http://mockrequest.com/inventory/", bytes.NewBufferString(inventoryJSON))
+	assert.Nil(t, err)
+
+	postInventoryHandler := api.NewInventoryHandler()
 	postInventoryHandler.ServeHTTP(rec, req)
 
 	assert.Equal(t, http.StatusAccepted, rec.Code)
 	assert.Equal(t, "application/json; charset=utf-8", rec.Header().Get("Content-Type"))
+	body := rec.Body.String()
+	assert.Equal(t, body, "")
 }
 
-func Test_PostDeck(t *testing.T) {
+func Test_DeleteInventory(t *testing.T) {
+	if beforeErr := before(); beforeErr != nil {
+		assert.Fail(t, beforeErr.Error())
+	}
+
+	req, err := http.NewRequest("DELETE", "http://mockrequest.com/inventory/"+inventoryID, bytes.NewBufferString(""))
+	assert.Nil(t, err)
+
+	inventoryHandler := api.NewInventoryHandler()
+	inventoryHandler.ServeHTTP(rec, req)
+
+	assert.Equal(t, http.StatusOK, rec.Code)
+	assert.Equal(t, "application/json; charset=utf-8", rec.Header().Get("Content-Type"))
+	body := rec.Body.String()
+	assert.Equal(t, body, "")
+}
+
+func Test_PostToCreateDeck(t *testing.T) {
 	if beforeErr := before(); beforeErr != nil {
 		assert.Fail(t, beforeErr.Error())
 	}
 	deckJSON := `{
-		"name": "Test_PostDeck",
-		"label": "Test_PostDeck - Handler Integration Test"
+		"name": "Test_PostToCreateDeck",
+        "mainCards": [
+            {"id": 2001, "deckCard": {"idBoard": 1, "quantity": 4} },
+            {"id": 2002, "deckCard": {"idBoard": 1, "quantity": 4} },
+            {"id": 2003, "deckCard": {"idBoard": 1, "quantity": 2} }
+        ],
+        "sideCards": [
+            {"id": 30, "deckCard": {"idBoard": 2, "quantity": 13} },
+            {"id": 50, "deckCard": {"idBoard": 2, "quantity": 42} },
+            {"id": 180, "deckCard": {"idBoard": 2, "quantity": 27} }
+        ]
 	}`
 	req, err := http.NewRequest("POST", "http://mockrequest.com/deck/", bytes.NewBufferString(deckJSON))
 	assert.Nil(t, err)
@@ -163,8 +226,8 @@ func Test_PostDeck(t *testing.T) {
 	assert.NotEqual(t, body, "")
 	intDeckID, convertIDErr := strconv.Atoi(body)
 	assert.Nil(t, convertIDErr)
-    assert.NotEqual(t, intDeckID, 0)
-    deckID = body
+	assert.NotEqual(t, intDeckID, 0)
+	deckID = body
 }
 
 func Test_GetDeck(t *testing.T) {
@@ -180,4 +243,53 @@ func Test_GetDeck(t *testing.T) {
 	assert.Equal(t, http.StatusOK, rec.Code)
 	assert.Equal(t, "application/json; charset=utf-8", rec.Header().Get("Content-Type"))
 	assert.Contains(t, rec.Body.String(), deckID)
+}
+
+func Test_PostToUpdateDeck(t *testing.T) {
+	if beforeErr := before(); beforeErr != nil {
+		assert.Fail(t, beforeErr.Error())
+	}
+	deckJSON := fmt.Sprintf(`{
+        "id": %v,
+		"name": "Test_PostToUpdateDeck",
+        "mainCards": [
+            {"id": 2764, "deckCard": {"idBoard": 1, "quantity": 4} },
+            {"id": 2884, "deckCard": {"idBoard": 1, "quantity": 4} },
+            {"id": 2791, "deckCard": {"idBoard": 1, "quantity": 2} },
+            {"id": 2863, "deckCard": {"idBoard": 1, "quantity": 1} }
+        ],
+        "sideCards": [
+            {"id": 3, "deckCard": {"idBoard": 2, "quantity": 13} },
+            {"id": 5, "deckCard": {"idBoard": 2, "quantity": 42} },
+            {"id": 1980, "deckCard": {"idBoard": 2, "quantity": 27} }
+        ]
+	}`, deckID)
+
+	req, err := http.NewRequest("POST", "http://mockrequest.com/deck/", bytes.NewBufferString(deckJSON))
+	assert.Nil(t, err)
+
+	postDeckHandler := api.NewDeckHandler()
+	postDeckHandler.ServeHTTP(rec, req)
+
+	assert.Equal(t, http.StatusAccepted, rec.Code)
+	assert.Equal(t, "application/json; charset=utf-8", rec.Header().Get("Content-Type"))
+	body := rec.Body.String()
+	assert.Equal(t, body, "")
+}
+
+func Test_DeleteDeck(t *testing.T) {
+	if beforeErr := before(); beforeErr != nil {
+		assert.Fail(t, beforeErr.Error())
+	}
+
+	req, err := http.NewRequest("DELETE", "http://mockrequest.com/deck/"+deckID, bytes.NewBufferString(""))
+	assert.Nil(t, err)
+
+	postDeckHandler := api.NewDeckHandler()
+	postDeckHandler.ServeHTTP(rec, req)
+
+	assert.Equal(t, http.StatusOK, rec.Code)
+	assert.Equal(t, "application/json; charset=utf-8", rec.Header().Get("Content-Type"))
+	body := rec.Body.String()
+	assert.Equal(t, body, "")
 }

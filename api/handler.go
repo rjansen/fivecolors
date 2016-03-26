@@ -77,7 +77,7 @@ func (h *QueryCardHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		}
 	} else {
 		if len(queryParameters) <= 0 {
-            //w.Header().Set("Content-Type", "application/json; charset=utf-8")
+			//w.Header().Set("Content-Type", "application/json; charset=utf-8")
 			w.WriteHeader(http.StatusBadRequest)
 			return
 		}
@@ -111,7 +111,7 @@ func (h *QueryCardHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			}
 		}
 		if numberParam != "" {
-            queryRestrinctions["c.multiverse_number = ?"] = numberParam
+			queryRestrinctions["c.multiverse_number = ?"] = numberParam
 		}
 		if order != "" {
 			order = "c.id"
@@ -230,10 +230,30 @@ func (h *QueryExpansionHandler) ServeHTTP(w http.ResponseWriter, r *http.Request
 	}
 }
 
-//NewPostInventoryHandler creates a new PostInvetoryHandler instance
-func NewPostInventoryHandler() http.Handler {
-	return &PostInventoryHandler{}
-//return identity.NewCookieAuthenticatedHandler(&PostDeckHandler{})
+//NewInventoryHandler creates a new DeckHandler instance
+func NewInventoryHandler() http.Handler {
+	return &InventoryHandler{
+		postHandler:   &PostInventoryHandler{},
+		deleteHandler: &DeleteInventoryHandler{},
+	}
+	//return identity.NewCookieAuthenticatedHandler(&GetCardHandler{})
+}
+
+//InventoryHandler is the handler to get and post Decks
+type InventoryHandler struct {
+	postHandler   http.Handler
+	deleteHandler http.Handler
+	//    session *identity.Session
+}
+
+func (h *InventoryHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+    if r.Method == "POST" {
+		h.postHandler.ServeHTTP(w, r)
+	} else if r.Method == "DELETE" {
+		h.deleteHandler.ServeHTTP(w, r)
+	} else {
+		http.Error(w, "InventoryHandler.MethodNotAllowed: Method="+r.Method, http.StatusInternalServerError)
+	}
 }
 
 //PostInventoryHandler is the handler to updates Inventory
@@ -256,25 +276,81 @@ func (h *PostInventoryHandler) ServeHTTP(w http.ResponseWriter, r *http.Request)
 		http.Error(w, "PostInvetoryHandler.UnreadableBodyError", http.StatusBadRequest)
 		return
 	}
-	if err := inventory.Update(); err != nil {
+	isCreateRequest := inventory.ID == 0
+	if err := inventory.Persist(); err != nil {
 		log.Printf("PostInvetoryHandler.CreateDeckError: Error[%v]", err)
 		http.Error(w, "PostInvetoryHandler.CreateDeckError", http.StatusInternalServerError)
 		return
 	}
 	w.Header().Set("Content-Type", "application/json; charset=utf-8")
-	w.WriteHeader(http.StatusAccepted)
+	if isCreateRequest {
+		w.WriteHeader(http.StatusCreated)
+		io.WriteString(w, strconv.Itoa(inventory.ID))
+	} else {
+		w.WriteHeader(http.StatusAccepted)
+	}
+}
+
+//NewDeleteDeckHandler creates a new DeleteDeckHandler instance
+//func NewDeleteDeckHandler() http.Handler {
+//	return &DeleteDeckHandler{}
+//return identity.NewCookieAuthenticatedHandler(&DeleteDeckHandler{})
+//}
+
+//DeleteInventoryHandler is the handler to get Decks
+type DeleteInventoryHandler struct {
+	//    session *identity.Session
+}
+
+//func (h *DeleteDeckHandler) SetSession(session *identity.Session) {
+//    h.session = session
+//}
+
+func (h *DeleteInventoryHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+	urlPathParameters := strings.Split(r.URL.Path, "/")
+	queryParameters := r.URL.Query()
+	log.Printf("DeleteInventoryHandler: URL[%q] PathParameters[%q] QueryParameters[%q]", r.URL.Path, urlPathParameters, queryParameters)
+
+	inventoryID := urlPathParameters[2]
+	if inventoryID == "" {
+		http.NotFound(w, r)
+		return
+	}
+	inventory := &data.Inventory{}
+	var convertIDErr error
+	inventory.ID, convertIDErr = strconv.Atoi(inventoryID)
+	if convertIDErr != nil {
+		log.Printf("DeleteInventoryHandler.DeckDeleteError: Inventory.ID[%v] Error[%v]", inventoryID, convertIDErr)
+		http.NotFound(w, r)
+		//http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	if err := inventory.Delete(); err != nil {
+		log.Printf("DeleteInventoryHandler.DeckDeleteError: Inventory.ID[%v] Error[%v]", inventoryID, err)
+		http.NotFound(w, r)
+		//http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	log.Printf("DeleteInventoryHandler.DeletedDeck: Deck.ID[%v]", inventoryID)
+	w.Header().Set("Content-Type", "application/json; charset=utf-8")
+	w.WriteHeader(http.StatusOK)
 }
 
 //NewDeckHandler creates a new DeckHandler instance
 func NewDeckHandler() http.Handler {
-	return &DeckHandler{getHandler: &GetDeckHandler{}, postHandler: &PostDeckHandler{}}
+	return &DeckHandler{
+		getHandler:    &QueryDeckHandler{},
+		postHandler:   &PostDeckHandler{},
+		deleteHandler: &DeleteDeckHandler{},
+	}
 	//return identity.NewCookieAuthenticatedHandler(&GetCardHandler{})
 }
 
 //DeckHandler is the handler to get and post Decks
 type DeckHandler struct {
-	getHandler  http.Handler
-	postHandler http.Handler
+	getHandler    http.Handler
+	postHandler   http.Handler
+	deleteHandler http.Handler
 	//    session *identity.Session
 }
 
@@ -283,6 +359,8 @@ func (h *DeckHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		h.getHandler.ServeHTTP(w, r)
 	} else if r.Method == "POST" {
 		h.postHandler.ServeHTTP(w, r)
+	} else if r.Method == "DELETE" {
+		h.deleteHandler.ServeHTTP(w, r)
 	} else {
 		http.Error(w, "DeckHandler.MethodNotAllowed: Method="+r.Method, http.StatusInternalServerError)
 	}
@@ -314,71 +392,155 @@ func (h *PostDeckHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "PostDeckHandler.UnreadableBodyError", http.StatusBadRequest)
 		return
 	}
-	if err := deck.Create(); err != nil {
+	isCreateRequest := deck.ID == 0
+	if err := deck.Persist(); err != nil {
 		log.Printf("PostDeckHandler.CreateDeckError: Error[%v]", err)
 		http.Error(w, "PostDeckHandler.CreateDeckError", http.StatusBadRequest)
 		return
 	}
 	w.Header().Set("Content-Type", "application/json; charset=utf-8")
-	w.WriteHeader(http.StatusCreated)
-	io.WriteString(w, strconv.Itoa(deck.ID))
+	if isCreateRequest {
+		w.WriteHeader(http.StatusCreated)
+		io.WriteString(w, strconv.Itoa(deck.ID))
+	} else {
+		w.WriteHeader(http.StatusAccepted)
+	}
 }
 
-//NewGetDeckHandler creates a new GetDeckHandler instance
-//func NewGetDeckHandler() http.Handler {
-//	return &GetDeckHandler{}
-//return identity.NewCookieAuthenticatedHandler(&GetDeckHandler{})
+//NewQueryDeckHandler creates a new QueryDeckHandler instance
+//func NewQueryDeckHandler() http.Handler {
+//	return &QueryDeckHandler{}
+//return identity.NewCookieAuthenticatedHandler(&QueryDeckHandler{})
 //}
 
-//GetDeckHandler is the handler to get Decks
-type GetDeckHandler struct {
+//QueryDeckHandler is the handler to get Decks
+type QueryDeckHandler struct {
 	//    session *identity.Session
 }
 
-//func (h *GetDeckHandler) SetSession(session *identity.Session) {
+//func (h *QueryDeckHandler) SetSession(session *identity.Session) {
 //    h.session = session
 //}
 
-func (h *GetDeckHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+func (h *QueryDeckHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	urlPathParameters := strings.Split(r.URL.Path, "/")
 	queryParameters := r.URL.Query()
-	log.Printf("GetDeckHandler: URL[%q] PathParameters[%q] QueryParameters[%q]", r.URL.Path, urlPathParameters, queryParameters)
+	log.Printf("QueryDeckHandler: URL[%q] PathParameters[%q] QueryParameters[%q]", r.URL.Path, urlPathParameters, queryParameters)
+
+	var deckID string
+	if len(urlPathParameters) >= 3 {
+		deckID = urlPathParameters[2]
+	} else {
+		deckID = ""
+	}
+	hydrate := queryParameters.Get("hydrate")
+	if hydrate == "" {
+		hydrate = "small"
+	}
+	if deckID != "" {
+		deck := &data.Deck{}
+		var convertIDErr error
+		deck.ID, convertIDErr = strconv.Atoi(deckID)
+		if convertIDErr != nil {
+			log.Printf("QueryDeckHandler.DeckReadError: Deck.ID[%v] Error[%v]", deckID, convertIDErr)
+			http.NotFound(w, r)
+			//http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+		if err := deck.Read(); err != nil {
+			log.Printf("QueryDeckHandler.DeckReadError: Deck.ID[%v] Error[%v]", deckID, err)
+			http.NotFound(w, r)
+			//http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+		log.Printf("QueryDeckHandler.GotDeck: Deck.ID[%v] Hydrate[%s]", deckID, hydrate)
+		w.Header().Set("Content-Type", "application/json; charset=utf-8")
+		w.WriteHeader(http.StatusOK)
+		jsonData, err := json.Marshal(deck)
+		bytesWritten, err := w.Write(jsonData)
+		if err != nil {
+			log.Printf("QueryDeckHandler.WriteResponseError: Deck.ID[%v] Error[%v]", deckID, err)
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+		} else {
+			log.Printf("QueryDeckHandler.JsonWritten: Deck.ID[%v] Bytes[%v]", deckID, bytesWritten)
+		}
+	} else {
+        regexName := queryParameters.Get("rx_name")
+		order := queryParameters.Get("order")
+
+		queryRestrinctions := make(map[string]interface{})
+		if regexName != "" {
+			queryRestrinctions["d.name regexp ?"] = regexName
+		}
+		if order != "" {
+			order = "d.id"
+		}
+		deck := &data.Deck{}
+        decks, err := deck.Query(queryRestrinctions, order)
+		if err != nil {
+			log.Printf("QueryDeckHandler.DeckReadError: Deck.ID[%v] Error[%v]", deckID, err)
+			http.NotFound(w, r)
+			//http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+        decksSize := len(decks)
+        log.Printf("QueryDeckHandler.QueryDecks: Decks.Len[%v] Hydrate[%s]", decksSize, hydrate)
+		w.Header().Set("Content-Type", "application/json; charset=utf-8")
+		w.WriteHeader(http.StatusOK)
+		jsonData, err := json.Marshal(decks)
+		bytesWritten, err := w.Write(jsonData)
+		if err != nil {
+			log.Printf("QueryDeckHandler.WriteResponseError: Deck.ID[%v] Error[%v]", deckID, err)
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+		} else {
+			log.Printf("QueryDeckHandler.JsonWritten: Deck.ID[%v] Bytes[%v]", deckID, bytesWritten)
+		}
+	}
+}
+
+//NewDeleteDeckHandler creates a new DeleteDeckHandler instance
+//func NewDeleteDeckHandler() http.Handler {
+//	return &DeleteDeckHandler{}
+//return identity.NewCookieAuthenticatedHandler(&DeleteDeckHandler{})
+//}
+
+//DeleteDeckHandler is the handler to get Decks
+type DeleteDeckHandler struct {
+	//    session *identity.Session
+}
+
+//func (h *DeleteDeckHandler) SetSession(session *identity.Session) {
+//    h.session = session
+//}
+
+func (h *DeleteDeckHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+	urlPathParameters := strings.Split(r.URL.Path, "/")
+	queryParameters := r.URL.Query()
+	log.Printf("DeleteDeckHandler: URL[%q] PathParameters[%q] QueryParameters[%q]", r.URL.Path, urlPathParameters, queryParameters)
 
 	deckID := urlPathParameters[2]
 	if deckID == "" {
 		http.NotFound(w, r)
 		return
 	}
-	hydrate := queryParameters.Get("hydrate")
-	if hydrate == "" {
-		hydrate = "small"
-	}
 	deck := &data.Deck{}
 	var convertIDErr error
 	deck.ID, convertIDErr = strconv.Atoi(deckID)
 	if convertIDErr != nil {
-		log.Printf("GetDeckHandler.DeckReadError: Deck.ID[%v] Error[%v]", deckID, convertIDErr)
+		log.Printf("DeleteDeckHandler.DeckDeleteError: Deck.ID[%v] Error[%v]", deckID, convertIDErr)
 		http.NotFound(w, r)
 		//http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
-	if err := deck.Read(); err != nil {
-		log.Printf("GetDeckHandler.DeckReadError: Deck.ID[%v] Error[%v]", deckID, err)
+	if err := deck.Delete(); err != nil {
+		log.Printf("DeleteDeckHandler.DeckDeleteError: Deck.ID[%v] Error[%v]", deckID, err)
 		http.NotFound(w, r)
 		//http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
-	log.Printf("GetDeckHandler.GotDeck: Deck.ID[%v] Hydrate[%s]", deckID, hydrate)
+	log.Printf("DeleteDeckHandler.DeletedDeck: Deck.ID[%v]", deckID)
 	w.Header().Set("Content-Type", "application/json; charset=utf-8")
 	w.WriteHeader(http.StatusOK)
-	jsonData, err := json.Marshal(deck)
-	bytesWritten, err := w.Write(jsonData)
-	if err != nil {
-		log.Printf("GetDeckHandler.WriteResponseError: Deck.ID[%v] Error[%v]", deckID, err)
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-	} else {
-		log.Printf("GetDeckHandler.JsonWritten: Deck.ID[%v] Bytes[%v]", deckID, bytesWritten)
-	}
 }
 
 //NewGetAssetHandler creates a new GetAssetHandler instance
@@ -392,7 +554,7 @@ type GetAssetHandler struct {
 	//    session *identity.Session
 }
 
-//func (h *GetDeckHandler) SetSession(session *identity.Session) {
+//func (h *QueryDeckHandler) SetSession(session *identity.Session) {
 //    h.session = session
 //}
 
