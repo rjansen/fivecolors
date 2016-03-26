@@ -406,13 +406,11 @@ func Test_DeckCreate(t *testing.T) {
 	log.Println("Test_DeckCreate")
 	deck := &data.Deck{}
 	deck.Name = "Test_DeckCreate"
-	deck.MainCards = []data.Card{
+	deck.Cards = []data.Card{
 		data.Card{ID: 1, DeckCard: data.DeckCard{BoardID: data.MainBoard, Quantity: 2}},
 		data.Card{ID: 2, DeckCard: data.DeckCard{BoardID: data.MainBoard, Quantity: 4}},
 		data.Card{ID: 3, DeckCard: data.DeckCard{BoardID: data.MainBoard, Quantity: 10}},
 		data.Card{ID: 4, DeckCard: data.DeckCard{BoardID: data.MainBoard, Quantity: 3}},
-	}
-	deck.SideCards = []data.Card{
 		data.Card{ID: 501, DeckCard: data.DeckCard{BoardID: data.SideBoard, Quantity: 5}},
 		data.Card{ID: 502, DeckCard: data.DeckCard{BoardID: data.SideBoard, Quantity: 27}},
 	}
@@ -434,25 +432,15 @@ func Test_DeckCreatedRead(t *testing.T) {
 	assert.Equal(t, deck.ID, fullDeck.ID)
 	assert.Equal(t, deck.Name, fullDeck.Name)
 
-	mainCardsLen := len(deck.MainCards)
-	assert.Equal(t, mainCardsLen, len(fullDeck.MainCards))
+	mainCardsLen := len(deck.Cards)
+	assert.Equal(t, mainCardsLen, len(fullDeck.Cards))
 	for k := 0; k < mainCardsLen; k++ {
-		fullDeckMainCard := fullDeck.MainCards[k]
-		deckMainCard := deck.MainCards[k]
+		fullDeckMainCard := fullDeck.Cards[k]
+		deckMainCard := deck.Cards[k]
 		assert.Equal(t, deckMainCard.ID, fullDeckMainCard.ID)
 		assert.Equal(t, deckMainCard.DeckCard.DeckID, fullDeck.ID)
-		assert.Equal(t, deckMainCard.DeckCard.BoardID, data.MainBoard)
+		assert.Equal(t, deckMainCard.DeckCard.BoardID, fullDeckMainCard.DeckCard.BoardID)
 		assert.Equal(t, deckMainCard.DeckCard.Quantity, fullDeckMainCard.DeckCard.Quantity)
-	}
-	sideCardsLen := len(deck.SideCards)
-	assert.Equal(t, sideCardsLen, len(fullDeck.SideCards))
-	for k := 0; k < sideCardsLen; k++ {
-		fullDeckSideCard := fullDeck.SideCards[k]
-		deckSideCard := deck.SideCards[k]
-		assert.Equal(t, deckSideCard.ID, fullDeckSideCard.ID)
-		assert.Equal(t, deckSideCard.DeckCard.DeckID, fullDeck.ID)
-		assert.Equal(t, deckSideCard.DeckCard.BoardID, data.SideBoard)
-		assert.Equal(t, deckSideCard.DeckCard.Quantity, fullDeckSideCard.DeckCard.Quantity)
 	}
 }
 
@@ -464,17 +452,15 @@ func Test_DeckUpdate(t *testing.T) {
 	deck := &data.Deck{}
 	deck.ID = fullDeck.ID
 	deck.Name = "Test_DeckUpdate"
-	deck.MainCards = []data.Card{
+	deck.Cards = []data.Card{
 		data.Card{ID: 1, DeckCard: data.DeckCard{BoardID: data.MainBoard, Quantity: 2}},
 		data.Card{ID: 2, DeckCard: data.DeckCard{BoardID: data.MainBoard, Quantity: 4}},
 		data.Card{ID: 20, DeckCard: data.DeckCard{BoardID: data.MainBoard, Quantity: 3}},
 		data.Card{ID: 33, DeckCard: data.DeckCard{BoardID: data.MainBoard, Quantity: 6}},
-		data.Card{ID: 600, DeckCard: data.DeckCard{BoardID: data.MainBoard, Quantity: 34}},
-		data.Card{ID: 701, DeckCard: data.DeckCard{BoardID: data.MainBoard, Quantity: 47}},
-	}
-	deck.SideCards = []data.Card{
 		data.Card{ID: 51, DeckCard: data.DeckCard{BoardID: data.SideBoard, Quantity: 5}},
 		data.Card{ID: 52, DeckCard: data.DeckCard{BoardID: data.SideBoard, Quantity: 27}},
+		data.Card{ID: 600, DeckCard: data.DeckCard{BoardID: data.MainBoard, Quantity: 34}},
+		data.Card{ID: 701, DeckCard: data.DeckCard{BoardID: data.MainBoard, Quantity: 47}},
 	}
 	createErr := deck.Persist()
 	assert.Nil(t, createErr)
@@ -493,25 +479,15 @@ func Test_DeckUpdatedRead(t *testing.T) {
 	assert.Equal(t, deck.ID, fullDeck.ID)
 	assert.Equal(t, deck.Name, fullDeck.Name)
 
-	mainCardsLen := len(deck.MainCards)
-	assert.Equal(t, mainCardsLen, len(fullDeck.MainCards))
+	mainCardsLen := len(deck.Cards)
+	assert.Equal(t, mainCardsLen, len(fullDeck.Cards))
 	for k := 0; k < mainCardsLen; k++ {
-		fullDeckMainCard := fullDeck.MainCards[k]
-		deckMainCard := deck.MainCards[k]
+		fullDeckMainCard := fullDeck.Cards[k]
+		deckMainCard := deck.Cards[k]
 		assert.Equal(t, deckMainCard.ID, fullDeckMainCard.ID)
 		assert.Equal(t, deckMainCard.DeckCard.DeckID, fullDeck.ID)
-		assert.Equal(t, deckMainCard.DeckCard.BoardID, data.MainBoard)
+		assert.Equal(t, deckMainCard.DeckCard.BoardID, fullDeckMainCard.DeckCard.BoardID)
 		assert.Equal(t, deckMainCard.DeckCard.Quantity, fullDeckMainCard.DeckCard.Quantity)
-	}
-	sideCardsLen := len(deck.SideCards)
-	assert.Equal(t, sideCardsLen, len(fullDeck.SideCards))
-	for k := 0; k < sideCardsLen; k++ {
-		fullDeckSideCard := fullDeck.SideCards[k]
-		deckSideCard := deck.SideCards[k]
-		assert.Equal(t, deckSideCard.ID, fullDeckSideCard.ID)
-		assert.Equal(t, deckSideCard.DeckCard.DeckID, fullDeck.ID)
-		assert.Equal(t, deckSideCard.DeckCard.BoardID, data.SideBoard)
-		assert.Equal(t, deckSideCard.DeckCard.Quantity, fullDeckSideCard.DeckCard.Quantity)
 	}
 }
 

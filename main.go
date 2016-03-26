@@ -23,10 +23,9 @@ func main() {
 
 	http.Handle("/card", api.NewQueryCardHandler())
 	http.Handle("/expansion", api.NewQueryExpansionHandler())
-	http.Handle("/inventory", api.NewPostInventoryHandler())
-	http.Handle("/deck", api.NewDeckHandler())
 	http.Handle("/asset/", api.NewGetAssetHandler())
-	//http.Handle("/asset", handler.NewAssetdHandler())
+	http.Handle("/inventory", api.NewInventoryHandler())
+	http.Handle("/deck", api.NewDeckHandler())
 
 	log.Printf("FivecolorsStart: Version[%s] BindAddress[%s]", handlerConfig.Version, handlerConfig.BindAddress)
 	err := http.ListenAndServe(handlerConfig.BindAddress, nil)

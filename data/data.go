@@ -626,10 +626,9 @@ func (i *Inventory) Unmarshal(reader io.Reader) error {
 
 //Deck represents the DECK entity
 type Deck struct {
-	ID        int    `json:"id"`
-	Name      string `json:"name"`
-	MainCards []Card `json:"mainCards"`
-	SideCards []Card `json:"sideCards"`
+	ID    int    `json:"id"`
+	Name  string `json:"name"`
+	Cards []Card `json:"cards"`
 
 	//db is a transient pointer to database connection
 	db *sql.DB
@@ -704,34 +703,23 @@ func (d *Deck) Persist() error {
             set quantity = ?
         where id_deck = ? and id_card = ? and id_board = ?`
 
-	for k := MainBoard; k <= SideBoard; k++ {
-		var cards []Card
-		switch k {
-		case MainBoard:
-			cards = d.MainCards
-		case SideBoard:
-			cards = d.SideCards
-		default:
-			return fmt.Errorf("data.Deck.ReadCardsError: InvalidBoard=%v", k)
-		}
-		for _, card := range cards {
-			_, insertErr := d.db.Exec(insertCardQuery, d.ID, card.ID, card.DeckCard.BoardID, card.DeckCard.Quantity)
-			if insertErr != nil {
-				log.Printf("data.Deck.InsertCardEx: Message='%v'", insertErr.Error())
-				if !primaryKeyViolation.MatchString(insertErr.Error()) {
-					return insertErr
-				}
-				updateResult, updateErr := d.db.Exec(updateCardQuery, card.DeckCard.Quantity, d.ID, card.ID, card.DeckCard.BoardID)
-				if updateErr != nil {
-					return updateErr
-				}
-				rowsUpdated, err := updateResult.RowsAffected()
-				if err != nil {
-					log.Printf("data.Deck.UpdateGetRowsAffectedEx: Message='%v'", err.Error())
-				} else {
-					if rowsUpdated != 1 {
-						log.Printf("data.Deck.UpdateMultipleEx: Message='%d Records was update for Inventory.ID=%d'", rowsUpdated, d.ID)
-					}
+	for _, card := range d.Cards {
+		_, insertErr := d.db.Exec(insertCardQuery, d.ID, card.ID, card.DeckCard.BoardID, card.DeckCard.Quantity)
+		if insertErr != nil {
+			log.Printf("data.Deck.InsertCardEx: Message='%v'", insertErr.Error())
+			if !primaryKeyViolation.MatchString(insertErr.Error()) {
+				return insertErr
+			}
+			updateResult, updateErr := d.db.Exec(updateCardQuery, card.DeckCard.Quantity, d.ID, card.ID, card.DeckCard.BoardID)
+			if updateErr != nil {
+				return updateErr
+			}
+			rowsUpdated, err := updateResult.RowsAffected()
+			if err != nil {
+				log.Printf("data.Deck.UpdateGetRowsAffectedEx: Message='%v'", err.Error())
+			} else {
+				if rowsUpdated != 1 {
+					log.Printf("data.Deck.UpdateMultipleEx: Message='%d Records was update for Inventory.ID=%d'", rowsUpdated, d.ID)
 				}
 			}
 		}
@@ -813,32 +801,23 @@ func (d *Deck) ReadCards(page int) error {
             left join expansion_asset a on a.id_expansion = e.id and a.id_rarity = c.id_rarity
             left join inventory_card i on i.id_inventory = 1 and i.id_card = c.id
             left join deck_card d on d.id_card = c.id
-        where d.id_deck = ? and d.id_board = ?
+        where d.id_deck = ?
         order by c.id`
 
-	for k := MainBoard; k <= SideBoard; k++ {
-		cardRows, readCardsErr := d.db.Query(query, d.ID, k)
-		if readCardsErr != nil {
-			return readCardsErr
-		}
-		//tempCards := make([]Card, selectLimit)
-		var tempCards []Card
-		for cardRows.Next() {
-			nextCard := Card{Expansion: Expansion{}, InventoryCard: InventoryCard{}, DeckCard: DeckCard{}}
-			if err := nextCard.FetchWithDeckCard(cardRows); err != nil {
-				return err
-			}
-			tempCards = append(tempCards, nextCard)
-		}
-		switch k {
-		case MainBoard:
-			d.MainCards = tempCards
-		case SideBoard:
-			d.SideCards = tempCards
-		default:
-			return fmt.Errorf("data.Deck.ReadCards: Message='Invalid board id=%d'", k)
-		}
+	cardRows, readCardsErr := d.db.Query(query, d.ID)
+	if readCardsErr != nil {
+		return readCardsErr
 	}
+	//tempCards := make([]Card, selectLimit)
+	var tempCards []Card
+	for cardRows.Next() {
+		nextCard := Card{Expansion: Expansion{}, InventoryCard: InventoryCard{}, DeckCard: DeckCard{}}
+		if err := nextCard.FetchWithDeckCard(cardRows); err != nil {
+			return err
+		}
+		tempCards = append(tempCards, nextCard)
+	}
+	d.Cards = tempCards
 	return nil
 }
 
