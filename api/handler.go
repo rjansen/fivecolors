@@ -82,6 +82,7 @@ func (h *QueryCardHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 
+        regexName := queryParameters.Get("rx_name")
 		regexCost := queryParameters.Get("rx_cost")
 		notRegexCost := queryParameters.Get("nrx_cost")
 		regexType := queryParameters.Get("rx_type")
@@ -91,6 +92,9 @@ func (h *QueryCardHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		order := queryParameters.Get("order")
 
 		queryRestrinctions := make(map[string]interface{})
+		if regexName != "" {
+			queryRestrinctions["c.name regexp ?"] = regexName
+		}
 		if regexCost != "" {
 			queryRestrinctions["c.manacost_label regexp ?"] = regexCost
 		}
@@ -473,7 +477,7 @@ func (h *QueryDeckHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			queryRestrinctions["d.name regexp ?"] = regexName
 		}
 		if order != "" {
-			order = "d.id"
+			order = "d.name"
 		}
 		deck := &data.Deck{}
         decks, err := deck.Query(queryRestrinctions, order)

@@ -21,11 +21,11 @@ func main() {
 	defer data.Close()
 	flag.Parse()
 
-	http.Handle("/card", api.NewQueryCardHandler())
-	http.Handle("/expansion", api.NewQueryExpansionHandler())
+	http.Handle("/card/", api.NewQueryCardHandler())
+	http.Handle("/expansion/", api.NewQueryExpansionHandler())
 	http.Handle("/asset/", api.NewGetAssetHandler())
-	http.Handle("/inventory", api.NewInventoryHandler())
-	http.Handle("/deck", api.NewDeckHandler())
+	http.Handle("/inventory/", api.NewInventoryHandler())
+	http.Handle("/deck/", api.NewDeckHandler())
 
 	log.Printf("FivecolorsStart: Version[%s] BindAddress[%s]", handlerConfig.Version, handlerConfig.BindAddress)
 	err := http.ListenAndServe(handlerConfig.BindAddress, nil)

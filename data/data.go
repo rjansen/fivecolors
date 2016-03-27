@@ -100,14 +100,14 @@ type Card struct {
 
 //InventoryCard represents the INVENTORY_CARD virtual entity
 type InventoryCard struct {
-	InventoryID int `json:"idInvetory"`
+	IDInventory int `json:"idInvetory"`
 	Quantity    int `json:"quantity"`
 }
 
 //DeckCard represents the DECK_CARD virtual entity
 type DeckCard struct {
-	DeckID   int `json:"idDeck"`
-	BoardID  int `json:"idBoard"`
+	IDDeck   int `json:"idDeck"`
+	IDBoard  int `json:"idBoard"`
 	Quantity int `json:"quantity"`
 }
 
@@ -139,7 +139,7 @@ func (c *Card) Fetch(fetchable Fetchable) error {
 		&c.ManacostLabel, &c.CombatpowerLabel, &c.TypeLabel,
 		&c.IDRarity, &c.Flavor, &c.Artist,
 		&c.Rate, &c.RateVotes, &c.IDAsset,
-		&c.InventoryCard.InventoryID, &c.InventoryCard.Quantity,
+		&c.InventoryCard.IDInventory, &c.InventoryCard.Quantity,
 		&c.Expansion.ID, &c.Expansion.Name, &c.Expansion.Label, &c.Expansion.IDAsset)
 }
 
@@ -149,8 +149,8 @@ func (c *Card) FetchWithDeckCard(fetchable Fetchable) error {
 		&c.ManacostLabel, &c.CombatpowerLabel, &c.TypeLabel,
 		&c.IDRarity, &c.Flavor, &c.Artist,
 		&c.Rate, &c.RateVotes, &c.IDAsset,
-		&c.InventoryCard.InventoryID, &c.InventoryCard.Quantity,
-		&c.DeckCard.DeckID, &c.DeckCard.BoardID, &c.DeckCard.Quantity,
+		&c.InventoryCard.IDInventory, &c.InventoryCard.Quantity,
+		&c.DeckCard.IDDeck, &c.DeckCard.IDBoard, &c.DeckCard.Quantity,
 		&c.Expansion.ID, &c.Expansion.Name, &c.Expansion.Label, &c.Expansion.IDAsset)
 }
 
@@ -704,13 +704,13 @@ func (d *Deck) Persist() error {
         where id_deck = ? and id_card = ? and id_board = ?`
 
 	for _, card := range d.Cards {
-		_, insertErr := d.db.Exec(insertCardQuery, d.ID, card.ID, card.DeckCard.BoardID, card.DeckCard.Quantity)
+		_, insertErr := d.db.Exec(insertCardQuery, d.ID, card.ID, card.DeckCard.IDBoard, card.DeckCard.Quantity)
 		if insertErr != nil {
 			log.Printf("data.Deck.InsertCardEx: Message='%v'", insertErr.Error())
 			if !primaryKeyViolation.MatchString(insertErr.Error()) {
 				return insertErr
 			}
-			updateResult, updateErr := d.db.Exec(updateCardQuery, card.DeckCard.Quantity, d.ID, card.ID, card.DeckCard.BoardID)
+			updateResult, updateErr := d.db.Exec(updateCardQuery, card.DeckCard.Quantity, d.ID, card.ID, card.DeckCard.IDBoard)
 			if updateErr != nil {
 				return updateErr
 			}
@@ -841,7 +841,7 @@ func (d *Deck) Query(queryParameters map[string]interface{}, order string) ([]in
 	}
 	query :=
 		`
-    select d.id, d.name from deck
+    select d.id, d.name from deck d
     `
 	if len(restrictions) > 0 {
 		query += "where " + strings.Join(restrictions, " and ") + "\n"

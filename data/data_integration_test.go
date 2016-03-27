@@ -61,7 +61,7 @@ func Test_CardRead(t *testing.T) {
 	assert.True(t, card.IDRarity >= 0)
 	assert.NotEqual(t, card.Artist, "")
 	assert.NotEqual(t, card.IDAsset, "")
-	assert.NotEqual(t, card.InventoryCard.InventoryID, 0)
+	assert.NotEqual(t, card.InventoryCard.IDInventory, 0)
 	assert.False(t, card.InventoryCard.Quantity < 0)
 }
 
@@ -86,7 +86,7 @@ func Test_CardQuery(t *testing.T) {
 		assert.True(t, card.IDRarity >= 0)
 		assert.NotEqual(t, card.Artist, "")
 		assert.NotEqual(t, card.IDAsset, "")
-		assert.NotEqual(t, card.InventoryCard.InventoryID, 0)
+		assert.NotEqual(t, card.InventoryCard.IDInventory, 0)
 		assert.False(t, card.InventoryCard.Quantity < 0)
 	}
 }
@@ -252,16 +252,16 @@ func Test_InventoryCreatedRead(t *testing.T) {
 	assert.Nil(t, readErr)
 	assert.Equal(t, inventory.ID, fullInventory.ID)
 	assert.Equal(t, inventory.Name, fullInventory.Name)
-    //Read Fully
-    readErr = inventory.ReadCards(-1)
-    assert.Nil(t, readErr)
+	//Read Fully
+	readErr = inventory.ReadCards(-1)
+	assert.Nil(t, readErr)
 	cardsLen := len(inventory.Cards)
 	assert.Equal(t, cardsLen, len(fullInventory.Cards))
 	for k := 0; k < cardsLen; k++ {
 		fullInventoryCard := fullInventory.Cards[k]
 		inventoryCard := inventory.Cards[k]
 		assert.Equal(t, inventoryCard.ID, fullInventoryCard.ID)
-		assert.Equal(t, inventoryCard.InventoryCard.InventoryID, fullInventory.ID)
+		assert.Equal(t, inventoryCard.InventoryCard.IDInventory, fullInventory.ID)
 		assert.Equal(t, inventoryCard.InventoryCard.Quantity, fullInventoryCard.InventoryCard.Quantity)
 	}
 }
@@ -276,13 +276,13 @@ func Test_InventoryUpdate(t *testing.T) {
 	inventory.Name = "Test_InventoryUpdate"
 	inventory.Cards = []data.Card{
 		//Mock old cards inventory never removes a inserted cards, but change his quantity
-        data.Card{ID: 1, InventoryCard: data.InventoryCard{Quantity: 2}},
+		data.Card{ID: 1, InventoryCard: data.InventoryCard{Quantity: 2}},
 		data.Card{ID: 2, InventoryCard: data.InventoryCard{Quantity: 5}},
 		data.Card{ID: 3, InventoryCard: data.InventoryCard{Quantity: 4}},
 		data.Card{ID: 4, InventoryCard: data.InventoryCard{Quantity: 4}},
 		data.Card{ID: 5, InventoryCard: data.InventoryCard{Quantity: 27}},
 		//New Cards
-        data.Card{ID: 530, InventoryCard: data.InventoryCard{Quantity: 2}},
+		data.Card{ID: 530, InventoryCard: data.InventoryCard{Quantity: 2}},
 		data.Card{ID: 540, InventoryCard: data.InventoryCard{Quantity: 20}},
 		data.Card{ID: 550, InventoryCard: data.InventoryCard{Quantity: 10}},
 		data.Card{ID: 1, InventoryCard: data.InventoryCard{Quantity: 1}},
@@ -303,14 +303,14 @@ func Test_InventoryUpdatedRead(t *testing.T) {
 	assert.Nil(t, readErr)
 	assert.Equal(t, inventory.ID, fullInventory.ID)
 	assert.Equal(t, inventory.Name, fullInventory.Name)
-    //Read Fully
-    readErr = inventory.ReadCards(-1)
-    assert.Nil(t, readErr)
+	//Read Fully
+	readErr = inventory.ReadCards(-1)
+	assert.Nil(t, readErr)
 	cardsLen := len(inventory.Cards)
 	for k := 0; k < cardsLen; k++ {
 		inventoryCard := inventory.Cards[k]
 		assert.NotEqual(t, inventoryCard.ID, 0)
-		assert.Equal(t, inventoryCard.InventoryCard.InventoryID, fullInventory.ID)
+		assert.Equal(t, inventoryCard.InventoryCard.IDInventory, fullInventory.ID)
 		assert.True(t, inventoryCard.InventoryCard.Quantity >= 0)
 	}
 }
@@ -407,12 +407,12 @@ func Test_DeckCreate(t *testing.T) {
 	deck := &data.Deck{}
 	deck.Name = "Test_DeckCreate"
 	deck.Cards = []data.Card{
-		data.Card{ID: 1, DeckCard: data.DeckCard{BoardID: data.MainBoard, Quantity: 2}},
-		data.Card{ID: 2, DeckCard: data.DeckCard{BoardID: data.MainBoard, Quantity: 4}},
-		data.Card{ID: 3, DeckCard: data.DeckCard{BoardID: data.MainBoard, Quantity: 10}},
-		data.Card{ID: 4, DeckCard: data.DeckCard{BoardID: data.MainBoard, Quantity: 3}},
-		data.Card{ID: 501, DeckCard: data.DeckCard{BoardID: data.SideBoard, Quantity: 5}},
-		data.Card{ID: 502, DeckCard: data.DeckCard{BoardID: data.SideBoard, Quantity: 27}},
+		data.Card{ID: 1, DeckCard: data.DeckCard{IDBoard: data.MainBoard, Quantity: 2}},
+		data.Card{ID: 2, DeckCard: data.DeckCard{IDBoard: data.MainBoard, Quantity: 4}},
+		data.Card{ID: 3, DeckCard: data.DeckCard{IDBoard: data.MainBoard, Quantity: 10}},
+		data.Card{ID: 4, DeckCard: data.DeckCard{IDBoard: data.MainBoard, Quantity: 3}},
+		data.Card{ID: 501, DeckCard: data.DeckCard{IDBoard: data.SideBoard, Quantity: 5}},
+		data.Card{ID: 502, DeckCard: data.DeckCard{IDBoard: data.SideBoard, Quantity: 27}},
 	}
 	createErr := deck.Persist()
 	assert.Nil(t, createErr)
@@ -438,8 +438,8 @@ func Test_DeckCreatedRead(t *testing.T) {
 		fullDeckMainCard := fullDeck.Cards[k]
 		deckMainCard := deck.Cards[k]
 		assert.Equal(t, deckMainCard.ID, fullDeckMainCard.ID)
-		assert.Equal(t, deckMainCard.DeckCard.DeckID, fullDeck.ID)
-		assert.Equal(t, deckMainCard.DeckCard.BoardID, fullDeckMainCard.DeckCard.BoardID)
+		assert.Equal(t, deckMainCard.DeckCard.IDDeck, fullDeck.ID)
+		assert.Equal(t, deckMainCard.DeckCard.IDBoard, fullDeckMainCard.DeckCard.IDBoard)
 		assert.Equal(t, deckMainCard.DeckCard.Quantity, fullDeckMainCard.DeckCard.Quantity)
 	}
 }
@@ -453,14 +453,14 @@ func Test_DeckUpdate(t *testing.T) {
 	deck.ID = fullDeck.ID
 	deck.Name = "Test_DeckUpdate"
 	deck.Cards = []data.Card{
-		data.Card{ID: 1, DeckCard: data.DeckCard{BoardID: data.MainBoard, Quantity: 2}},
-		data.Card{ID: 2, DeckCard: data.DeckCard{BoardID: data.MainBoard, Quantity: 4}},
-		data.Card{ID: 20, DeckCard: data.DeckCard{BoardID: data.MainBoard, Quantity: 3}},
-		data.Card{ID: 33, DeckCard: data.DeckCard{BoardID: data.MainBoard, Quantity: 6}},
-		data.Card{ID: 51, DeckCard: data.DeckCard{BoardID: data.SideBoard, Quantity: 5}},
-		data.Card{ID: 52, DeckCard: data.DeckCard{BoardID: data.SideBoard, Quantity: 27}},
-		data.Card{ID: 600, DeckCard: data.DeckCard{BoardID: data.MainBoard, Quantity: 34}},
-		data.Card{ID: 701, DeckCard: data.DeckCard{BoardID: data.MainBoard, Quantity: 47}},
+		data.Card{ID: 1, DeckCard: data.DeckCard{IDBoard: data.MainBoard, Quantity: 2}},
+		data.Card{ID: 2, DeckCard: data.DeckCard{IDBoard: data.MainBoard, Quantity: 4}},
+		data.Card{ID: 20, DeckCard: data.DeckCard{IDBoard: data.MainBoard, Quantity: 3}},
+		data.Card{ID: 33, DeckCard: data.DeckCard{IDBoard: data.MainBoard, Quantity: 6}},
+		data.Card{ID: 51, DeckCard: data.DeckCard{IDBoard: data.SideBoard, Quantity: 5}},
+		data.Card{ID: 52, DeckCard: data.DeckCard{IDBoard: data.SideBoard, Quantity: 27}},
+		data.Card{ID: 600, DeckCard: data.DeckCard{IDBoard: data.MainBoard, Quantity: 34}},
+		data.Card{ID: 701, DeckCard: data.DeckCard{IDBoard: data.MainBoard, Quantity: 47}},
 	}
 	createErr := deck.Persist()
 	assert.Nil(t, createErr)
@@ -485,9 +485,38 @@ func Test_DeckUpdatedRead(t *testing.T) {
 		fullDeckMainCard := fullDeck.Cards[k]
 		deckMainCard := deck.Cards[k]
 		assert.Equal(t, deckMainCard.ID, fullDeckMainCard.ID)
-		assert.Equal(t, deckMainCard.DeckCard.DeckID, fullDeck.ID)
-		assert.Equal(t, deckMainCard.DeckCard.BoardID, fullDeckMainCard.DeckCard.BoardID)
+		assert.Equal(t, deckMainCard.DeckCard.IDDeck, fullDeck.ID)
+		assert.Equal(t, deckMainCard.DeckCard.IDBoard, fullDeckMainCard.DeckCard.IDBoard)
 		assert.Equal(t, deckMainCard.DeckCard.Quantity, fullDeckMainCard.DeckCard.Quantity)
+	}
+}
+
+func Test_DeckList(t *testing.T) {
+	if beforeErr := before(); beforeErr != nil {
+		assert.Fail(t, beforeErr.Error())
+	}
+	log.Println("Test_DeckList")
+	deckNameParameter := make(map[string]interface{}, 1)
+	deckNameParameter["d.name regexp ?"] = "Test.*"
+	deck := &data.Deck{}
+	decks, readErr := deck.Query(deckNameParameter, "d.name")
+	assert.Nil(t, readErr)
+	assert.NotNil(t, decks)
+	assert.True(t, len(decks) > 0)
+	for _, value := range decks {
+		assert.NotEqual(t, value.(data.Deck).ID, 0)
+		assert.NotEqual(t, value.(data.Deck).Name, "")
+		for _, card := range value.(data.Deck).Cards {
+			assert.NotEqual(t, card.ID, 0)
+			assert.NotEqual(t, card.Name, 0)
+			assert.NotEqual(t, card.IDAsset, 0)
+			assert.NotNil(t, card.Expansion)
+			assert.NotEqual(t, card.Expansion.ID, 0)
+			assert.NotEqual(t, card.Expansion.IDAsset, 0)
+			assert.NotNil(t, card.DeckCard)
+			assert.NotEqual(t, card.DeckCard.IDBoard, 0)
+			assert.NotEqual(t, card.DeckCard.IDDeck, 0)
+		}
 	}
 }
 

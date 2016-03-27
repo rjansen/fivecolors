@@ -80,6 +80,23 @@ func Test_QueryCardByColor(t *testing.T) {
 	assert.NotEqual(t, rec.Body.String(), "")
 }
 
+func Test_QueryCardByType(t *testing.T) {
+	if beforeErr := before(); beforeErr != nil {
+		assert.Fail(t, beforeErr.Error())
+	}
+	//"rx_cost", "nrx_cost", "rx_type", "nrx_type", "order"
+	cardQuery := "rx_type=creature"
+	req, err := http.NewRequest("GET", "http://mockrequest.com/card/?"+cardQuery, bytes.NewBufferString(""))
+	assert.Nil(t, err)
+
+	getCardHandler := api.NewQueryCardHandler()
+	getCardHandler.ServeHTTP(rec, req)
+
+	assert.Equal(t, http.StatusOK, rec.Code)
+	assert.Equal(t, "application/json; charset=utf-8", rec.Header().Get("Content-Type"))
+	assert.NotEqual(t, rec.Body.String(), "")
+}
+
 func Test_QueryCardByColorOrderByName(t *testing.T) {
 	if beforeErr := before(); beforeErr != nil {
 		assert.Fail(t, beforeErr.Error())
@@ -97,11 +114,28 @@ func Test_QueryCardByColorOrderByName(t *testing.T) {
 	assert.NotEqual(t, rec.Body.String(), "")
 }
 
+func Test_QueryCardByName(t *testing.T) {
+	if beforeErr := before(); beforeErr != nil {
+		assert.Fail(t, beforeErr.Error())
+	}
+	//"rx_cost", "nrx_cost", "rx_type", "nrx_type", "order"
+	cardQuery := "rx_name=duress"
+	req, err := http.NewRequest("GET", "http://mockrequest.com/card/?"+cardQuery, bytes.NewBufferString(""))
+	assert.Nil(t, err)
+
+	getCardHandler := api.NewQueryCardHandler()
+	getCardHandler.ServeHTTP(rec, req)
+
+	assert.Equal(t, http.StatusOK, rec.Code)
+	assert.Equal(t, "application/json; charset=utf-8", rec.Header().Get("Content-Type"))
+	assert.NotEqual(t, rec.Body.String(), "")
+}
+
 func Test_QueryCardWithoutParameters(t *testing.T) {
 	if beforeErr := before(); beforeErr != nil {
 		assert.Fail(t, beforeErr.Error())
 	}
-	req, err := http.NewRequest("GET", "http://mockrequest.com/card", bytes.NewBufferString(""))
+	req, err := http.NewRequest("GET", "http://mockrequest.com/card/", bytes.NewBufferString(""))
 	assert.Nil(t, err)
 
 	getCardHandler := api.NewQueryCardHandler()
@@ -114,7 +148,7 @@ func Test_QueryExpansionWithoutParameters(t *testing.T) {
 	if beforeErr := before(); beforeErr != nil {
 		assert.Fail(t, beforeErr.Error())
 	}
-	req, err := http.NewRequest("GET", "http://mockrequest.com/expansion", bytes.NewBufferString(""))
+	req, err := http.NewRequest("GET", "http://mockrequest.com/expansion/", bytes.NewBufferString(""))
 	assert.Nil(t, err)
 
 	getExpansionHandler := api.NewQueryExpansionHandler()
@@ -275,6 +309,22 @@ func Test_PostToUpdateDeck(t *testing.T) {
 	assert.Equal(t, "application/json; charset=utf-8", rec.Header().Get("Content-Type"))
 	body := rec.Body.String()
 	assert.Equal(t, body, "")
+}
+
+func Test_QueryDeckByNameParameters(t *testing.T) {
+	if beforeErr := before(); beforeErr != nil {
+		assert.Fail(t, beforeErr.Error())
+	}
+	deckNameRx := "Test"
+	req, err := http.NewRequest("GET", "http://mockrequest.com/deck/?rx_name="+deckNameRx, bytes.NewBufferString(""))
+	assert.Nil(t, err)
+
+	getDeckHandler := api.NewDeckHandler()
+	getDeckHandler.ServeHTTP(rec, req)
+
+	assert.Equal(t, http.StatusOK, rec.Code)
+	assert.Equal(t, "application/json; charset=utf-8", rec.Header().Get("Content-Type"))
+	assert.NotEqual(t, rec.Body.String(), "")
 }
 
 func Test_DeleteDeck(t *testing.T) {
