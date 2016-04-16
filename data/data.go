@@ -297,7 +297,7 @@ func (e *Expansion) Read() error {
 	query :=
 		`select e.id, e.name, e.label, a.id_asset
 		from expansion e
-            left join expansion_asset a on e.id = a.id_expansion and a.id_rarity = 0
+            left join expansion_asset a on e.id = a.id_expansion and (a.id_rarity = 0 or a.id_rarity = 4)
 		where e.id = ?`
 	row := e.db.QueryRow(query, e.ID)
 	return e.Fetch(row)
@@ -325,7 +325,7 @@ func (e *Expansion) Query(queryParameters map[string]interface{}, order string) 
 		`
         select e.id, e.name, e.label, a.id_asset
 		from expansion e
-        left join expansion_asset a on e.id = a.id_expansion and a.id_rarity = 0
+        left join expansion_asset a on e.id = a.id_expansion and (a.id_rarity = 0 or a.id_rarity = 4)
         `
 	if len(restrictions) > 0 {
 		query += "where " + strings.Join(restrictions, " and ") + "\n"
