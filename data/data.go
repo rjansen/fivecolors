@@ -9,6 +9,8 @@ import (
 	"log"
 	"regexp"
 	"strings"
+
+	"farm.e-pedion.com/repo/security/identity"
 )
 
 const (
@@ -164,24 +166,31 @@ func (c *Card) Read() error {
 	if c.ID <= 0 {
 		return errors.New("data.Card.ReadError: Message='Card.ID is empty'")
 	}
+	if c.InventoryCard.IDInventory <= 0 {
+		return errors.New("data.Card.ReadError: Message='Card.InventoryCard.IDInventory is empty'")
+	}
 	query :=
-		`select c.id, c.multiverse_number, c.name, c.label, coalesce(c.text, ''),
+		`
+		select c.id, c.multiverse_number, c.name, c.label, coalesce(c.text, ''),
             coalesce(c.manacost_label, ''), coalesce(c.combatpower_label, ''), c.type_label,
             c.id_rarity, coalesce(c.flavor, ''), c.artist,
             c.rate, c.rate_votes, c.id_asset,
-            coalesce(i.id_inventory, 1), coalesce(i.quantity, 0),
+            coalesce(i.id_inventory, ?), coalesce(i.quantity, 0),
             e.id, e.name, e.label, a.id_asset
         from card c
             left join expansion e on c.id_expansion = e.id
             left join expansion_asset a on a.id_expansion = e.id and a.id_rarity = c.id_rarity
-            left join inventory_card i on i.id_inventory = 1 and i.id_card = c.id
+            left join inventory_card i on i.id_inventory = ? nad i.id_card = c.id
         where c.id = ?`
-	row := c.db.QueryRow(query, c.ID)
+	row := c.db.QueryRow(query, c.InventoryCard.IDInventory, c.ID, c.InventoryCard.IDInventory)
 	return c.Fetch(row)
 }
 
 //Query querys CARDs by restrictions and create a list of Cards references
 func (c *Card) Query(queryParameters map[string]interface{}, order string) ([]interface{}, error) {
+	if c.InventoryCard.IDInventory <= 0 {
+		return nil, errors.New("data.Card.QueryError: Message='Card.InventoryCard.IDInventory is empty'")
+	}
 	if queryParameters == nil {
 		return nil, errors.New("data.Card.QueryError: Message='QueryParameter is empty'")
 	}
@@ -199,23 +208,26 @@ func (c *Card) Query(queryParameters map[string]interface{}, order string) ([]in
 	}
 	query :=
 		`
-        select c.id, c.multiverse_number, c.name, c.label, coalesce(c.text, ''),
-            coalesce(c.manacost_label, ''), coalesce(c.combatpower_label, ''), c.type_label,
-            c.id_rarity, coalesce(c.flavor, ''), c.artist,
-            c.rate, c.rate_votes, c.id_asset,
-            coalesce(i.id_inventory, 1), coalesce(i.quantity, 0),
-            e.id, e.name, e.label, a.id_asset
-        from card c
-            left join expansion e on c.id_expansion = e.id
-            left join expansion_asset a on a.id_expansion = e.id and a.id_rarity = c.id_rarity
-            left join inventory_card i on i.id_inventory = 1 and i.id_card = c.id
-        where ` + strings.Join(restrictions, " and ")
+            select c.id, c.multiverse_number, c.name, c.label, coalesce(c.text, ''),
+                coalesce(c.manacost_label, ''), coalesce(c.combatpower_label, ''), c.type_label,
+                c.id_rarity, coalesce(c.flavor, ''), c.artist,
+                c.rate, c.rate_votes, c.id_asset,
+                coalesce(i.id_inventory, ?), coalesce(i.quantity, 0),
+                e.id, e.name, e.label, a.id_asset
+            from card c
+                left join expansion e on c.id_expansion = e.id
+                left join expansion_asset a on a.id_expansion = e.id and a.id_rarity = c.id_rarity
+                left join inventory_card i on i.id_inventory = ? and i.id_card = c.id
+            where ` + strings.Join(restrictions, " and ")
 
 	if order != "" {
 		query += " order by " + order
 	} else {
 		query += " order by c.name"
 	}
+
+	//Prepend the IDInventory parameter into parameters value
+	values = append([]interface{}{c.InventoryCard.IDInventory, c.InventoryCard.IDInventory}, values...)
 
 	log.Printf("data.Card.Query: Query=%v Parameters=%v", query, values)
 	if err := c.Attach(); err != nil {
@@ -227,8 +239,9 @@ func (c *Card) Query(queryParameters map[string]interface{}, order string) ([]in
 		return nil, queryErr
 	}
 	//Limit the result
-	//cards := make([]interface{}, selectLimit)
-	var cards []interface{}
+	//cards := make([]interface{}, 0)
+	cards := []interface{}{}
+	//var cards []interface{}
 	for rows.Next() {
 		nextCard := Card{Expansion: Expansion{}, InventoryCard: InventoryCard{}}
 		if err := nextCard.Fetch(rows); err != nil {
@@ -337,7 +350,7 @@ func (e *Expansion) Query(queryParameters map[string]interface{}, order string) 
 		query += " order by e.name"
 	}
 
-	log.Printf("data.Card.Query: Query=%v Parameters=%v", query, values)
+	log.Printf("data.Expansion.Query: Query=%v Parameters=%v", query, values)
 	if err := e.Attach(); err != nil {
 		return nil, err
 	}
@@ -347,8 +360,9 @@ func (e *Expansion) Query(queryParameters map[string]interface{}, order string) 
 		return nil, queryErr
 	}
 	//Limit the result
-	//expansions := make([]interface{}, selectLimit)
-	var expansions []interface{}
+	//expansions := make([]interface{}, 0)
+	expansions := []interface{}{}
+	//var expansions []interface{}
 	for rows.Next() {
 		nextExpansion := Expansion{}
 		if err := nextExpansion.Fetch(rows); err != nil {
@@ -427,12 +441,193 @@ func (a *Asset) Unmarshal(reader io.Reader) error {
 	return json.NewDecoder(reader).Decode(&a)
 }
 
+//GetPlayer loads the player from database or creates a new one and associate the login eith him
+func GetPlayer(username string) (*Player, error) {
+	player := &Player{Username: username}
+	if readErr := player.Read(); readErr != nil {
+		//Creates a new player and associates the login with him
+		if persistsErr := player.Persist(); persistsErr != nil {
+			return nil, persistsErr
+		}
+		if readErr := player.Read(); readErr != nil {
+			return nil, readErr
+		}
+	}
+	return player, nil
+}
+
+//Player represents the PLAYER_DECK and PLAYER_INVENTORY entity
+type Player struct {
+	ID          int    `json:"id"`
+	Username    string `json:"username"`
+	IDInventory int    `json:"idInventory"`
+	IDDecks     []int  `json:"idDecks"`
+	//db is a transient pointer to database connection
+	db *sql.DB
+}
+
+//FillFromSession loads the player attributes from identity.Session object
+func (p *Player) FillFromSession(session *identity.Session) error {
+	log.Printf("FillingPlayerFromSession: Session=%+v", session)
+	if session.Data == nil ||
+		session.Data["id"] == nil || session.Data["id"].(float64) <= 0 ||
+		session.Data["username"] == nil || strings.TrimSpace(session.Data["username"].(string)) == "" ||
+		session.Data["idInventory"] == nil || session.Data["idInventory"].(float64) <= 0 ||
+		session.Data["idDecks"] == nil || len(session.Data["idDecks"].([]interface{})) < 0 {
+		return errors.New("Some required attributes to fill a player is missing")
+	}
+	p.ID = int(session.Data["id"].(float64))
+	p.Username = session.Data["username"].(string)
+	p.IDInventory = int(session.Data["idInventory"].(float64))
+	idDecks := session.Data["idDecks"].([]interface{})
+	p.IDDecks = make([]int, len(idDecks))
+	for i := range idDecks {
+		p.IDDecks[i] = int(idDecks[i].(float64))
+	}
+	return nil
+}
+
+//SetDB attachs a database connection to Expansion
+func (p *Player) SetDB(db *sql.DB) error {
+	if db == nil {
+		return errors.New("NullDBReferenceError: Message='The db parameter is required'")
+	}
+	p.db = db
+	return nil
+}
+
+//GetDB returns the Expansion attached connection
+func (p *Player) GetDB() (*sql.DB, error) {
+	if p.db == nil {
+		return nil, errors.New("NotAttachedError: Message='The db context is null'")
+	}
+	return p.db, nil
+}
+
+//Attach binds a new database connection to Expansion reference
+func (p *Player) Attach() error {
+	return attachToDB(p)
+}
+
+//Fetch fetchs the Row and sets the values into Expansion instance
+func (p *Player) Fetch(fetchable Fetchable) error {
+	return fetchable.Scan(&p.ID, &p.Username, &p.IDInventory)
+}
+
+//Read gets the entity representation from the database.
+//Player.Username must not empty to perform a Read operation
+func (p *Player) Read() error {
+	p.Attach()
+	defer closeDB(p)
+	if strings.TrimSpace(p.Username) == "" {
+		return errors.New("data.Player.ReadError: Message='Player.Username is empty'")
+	}
+	query := `
+        select p.id, p.username, (select max(i.id) from inventory i where i.id_player = p.id) as id_inventory
+        from player p
+        where p.username = ?;
+    `
+	row := p.db.QueryRow(query, p.Username)
+	if err := p.Fetch(row); err != nil {
+		return err
+	}
+	//Read Fully
+	return p.ReadDecks(-1)
+}
+
+//ReadDecks gets one related Cards page of this Deck
+//Player.ID must not empty to perform a ReadDecks operation
+func (p *Player) ReadDecks(page int) error {
+	p.Attach()
+	defer closeDB(p)
+	if p.ID <= 0 {
+		return errors.New("data.Player.ReadDecksError: Message='Player.ID is empty'")
+	}
+
+	query := `
+        select d.id
+        from deck d
+        where d.id_player = ?;
+    `
+
+	deckRows, readDecksErr := p.db.Query(query, p.ID)
+	if readDecksErr != nil {
+		return readDecksErr
+	}
+	//tempIDDecks := make([]int, 0)
+	tempIDDecks := []int{}
+	//var tempIDDecks []int
+	for deckRows.Next() {
+		var nextIDDeck int
+		if err := deckRows.Scan(&nextIDDeck); err != nil {
+			return err
+		}
+		tempIDDecks = append(tempIDDecks, nextIDDeck)
+	}
+	p.IDDecks = tempIDDecks
+	return nil
+}
+
+//Persist persists the PLAYER record with Player attributes values
+func (p *Player) Persist() error {
+	p.Attach()
+	defer closeDB(p)
+	if strings.TrimSpace(p.Username) == "" {
+		return errors.New("data.Player.PersistError: Message='Player.Username is empty'")
+	}
+
+	//Checks if the player already exists in the database
+	countQuery := `select count(1) from player p where p.username = ?`
+	countRow := p.db.QueryRow(countQuery, p.Username)
+	var countPlayer int
+	if countErr := countRow.Scan(&countPlayer); countErr != nil {
+		return countErr
+	}
+
+	if countPlayer <= 0 {
+		insert := `insert into player (username) values (?)`
+
+		insertResult, insertErr := p.db.Exec(insert, p.Username)
+		if insertErr != nil {
+			return insertErr
+		}
+		insertedID, lastIDErr := insertResult.LastInsertId()
+		if lastIDErr != nil {
+			return lastIDErr
+		}
+		p.ID = int(insertedID)
+
+		insertInventory := `insert into inventory (name) values (?)`
+		insertInvetoryResult, insertInvetoryErr := p.db.Exec(insertInventory, p.Username)
+		if insertInvetoryErr != nil {
+			return insertInvetoryErr
+		}
+		inventoryID, lastIDInventoryErr := insertInvetoryResult.LastInsertId()
+		if lastIDInventoryErr != nil {
+			return lastIDInventoryErr
+		}
+		p.IDInventory = int(inventoryID)
+
+		log.Printf("data.Player.PersistedNewPlayer: ID=%v Username='%v' IDInventory=%v", p.ID, p.Username, p.IDInventory)
+	} else {
+		update := `update player set dt_lastlogin = current_timestamp() where username = ?`
+
+		_, updateErr := p.db.Exec(update, p.Username)
+		if updateErr != nil {
+			return updateErr
+		}
+		log.Printf("data.Player.UpdatedPlayer: ID=%v Username='%v' IDInventory=%v", p.ID, p.Username, p.IDInventory)
+	}
+	return nil
+}
+
 //Inventory represents the INVENTORY entity
 type Inventory struct {
-	ID    int    `json:"id"`
-	Name  string `json:"name"`
-	Label string `json:"label"`
-	Cards []Card `json:"cards"`
+	ID       int    `json:"id"`
+	Name     string `json:"name"`
+	Label    string `json:"label"`
+	IDPlayer int    `json:"idPlayer"`
+	Cards    []Card `json:"cards"`
 	//db is a transient pointer to database connection
 	db *sql.DB
 }
@@ -463,12 +658,12 @@ func (i *Inventory) Attach() error {
 func (i *Inventory) Persist() error {
 	i.Attach()
 	defer closeDB(i)
-	if i.Name == "" {
-		return errors.New("data.Inventory.UpdateError: Message='Inventory.Name is empty'")
+	if i.IDPlayer <= 0 {
+		return errors.New("data.Inventory.UpdateError: Message='Inventory.IDPlayer is empty'")
 	}
 	if i.ID <= 0 {
-		insertInventoryQuery := `insert into inventory (name) values (?)`
-		insertResult, insertErr := i.db.Exec(insertInventoryQuery, i.Name)
+		insertInventoryQuery := `insert into inventory (name, id_player) values (?, ?)`
+		insertResult, insertErr := i.db.Exec(insertInventoryQuery, i.Name, i.IDPlayer)
 		if insertErr != nil {
 			return insertErr
 		}
@@ -476,23 +671,8 @@ func (i *Inventory) Persist() error {
 		if lastIDErr != nil {
 			return lastIDErr
 		}
-		log.Printf("data.Inventory.PersistedNewInventory: ID=%v Name='%v'", insertedID, i.Name)
+		log.Printf("data.Inventory.PersistedNewInventory: ID=%v IDPlayer=%v Name='%v'", insertedID, i.IDPlayer, i.Name)
 		i.ID = int(insertedID)
-	} else {
-		updateInventoryQuery := `update inventory set name = ? where id = ?`
-		updateResult, updateErr := i.db.Exec(updateInventoryQuery, i.Name, i.ID)
-		if updateErr != nil {
-			return updateErr
-		}
-		rowsUpdated, err := updateResult.RowsAffected()
-		if err != nil {
-			log.Printf("data.Inventory.UpdateGetRowsAffectedEx: Message='%v'", err.Error())
-		} else {
-			if rowsUpdated != 1 {
-				log.Printf("data.Inventory.UpdateMultipleEx: Message='%d Inventory Records was update for Inventory.ID=%d and Inventory.Name=%v'", rowsUpdated, i.ID, i.Name)
-			}
-		}
-		log.Printf("data.Inventory.PersistedOldInventory: ID=%v Name='%v'", i.ID, i.Name)
 	}
 
 	insertCardQuery :=
@@ -534,6 +714,9 @@ func (i *Inventory) Delete() error {
 	if i.ID <= 0 {
 		return errors.New("data.Inventory.DeleteError: Message='Inventory.ID is empty'")
 	}
+	if i.IDPlayer <= 0 {
+		return errors.New("data.Inventory.DeleteError: Message='Inventory.IDPlayer is empty'")
+	}
 	deleteCardsResult, deleteCardsErr := i.db.Exec("delete from inventory_card where id_inventory = ?", i.ID)
 	if deleteCardsErr != nil {
 		return deleteCardsErr
@@ -542,9 +725,9 @@ func (i *Inventory) Delete() error {
 	if cardsRowsDeletedErr != nil {
 		log.Printf("data.Inventory.DeleteCardsGetRowsAffectedEx: Message='%v'", cardsRowsDeletedErr.Error())
 	} else {
-		log.Printf("data.Inventory.DeleteCards: DeletedCards=%v ID=%d", cardsRowsDeleted, i.ID)
+		log.Printf("data.Inventory.DeleteCards: DeletedCards=%v ID=%d IDPlayer=%v", cardsRowsDeleted, i.ID, i.IDPlayer)
 	}
-	deleteResult, deleteErr := i.db.Exec("delete from inventory where id = ?", i.ID)
+	deleteResult, deleteErr := i.db.Exec("delete from inventory where id = ? and id_player = ?", i.ID, i.IDPlayer)
 	if deleteErr != nil {
 		return deleteErr
 	}
@@ -553,7 +736,7 @@ func (i *Inventory) Delete() error {
 		log.Printf("data.Inventory.DeleteGetRowsAffectedEx: Message='%v'", err.Error())
 	} else {
 		if rowsDeleted != 1 {
-			log.Printf("data.Inventory.DeleteMultipleEx: Message='%d Records was delete for Inventory.ID=%d'", rowsDeleted, i.ID)
+			log.Printf("data.Inventory.DeleteMultipleEx: Message='%d Records was delete for Inventory.ID=%d and Inventory.IDPlayer=%d'", rowsDeleted, i.ID, i.IDPlayer)
 		}
 	}
 	return nil
@@ -561,7 +744,7 @@ func (i *Inventory) Delete() error {
 
 //Fetch fetchs the Row and sets the values into Deck instance
 func (i *Inventory) Fetch(fetchable Fetchable) error {
-	return fetchable.Scan(&i.ID, &i.Name)
+	return fetchable.Scan(&i.ID, &i.Name, &i.IDPlayer)
 }
 
 //Read gets the entity representation from the database.
@@ -572,7 +755,10 @@ func (i *Inventory) Read() error {
 	if i.ID <= 0 {
 		return errors.New("data.Inventory.ReadError: Message='Inventory.ID is empty'")
 	}
-	row := i.db.QueryRow("select i.id, i.name from inventory i where i.id = ?", i.ID)
+	if i.IDPlayer <= 0 {
+		return errors.New("data.Inventory.ReadError: Message='Inventory.IDPlayer is empty'")
+	}
+	row := i.db.QueryRow("select i.id, i.name, i.id_player from inventory i where i.id = ? and i.id_player = ?", i.ID, i.IDPlayer)
 	return i.Fetch(row)
 }
 
@@ -601,8 +787,9 @@ func (i *Inventory) ReadCards(page int) error {
 	if readCardsErr != nil {
 		return readCardsErr
 	}
-	//tempCards := make([]Card, selectLimit)
-	var cards []Card
+	//cards := make([]Card, 0)
+	cards := []Card{}
+	//var cards []Card
 	for rows.Next() {
 		nextCard := Card{Expansion: Expansion{}, InventoryCard: InventoryCard{}}
 		if err := nextCard.Fetch(rows); err != nil {
@@ -626,9 +813,11 @@ func (i *Inventory) Unmarshal(reader io.Reader) error {
 
 //Deck represents the DECK entity
 type Deck struct {
-	ID    int    `json:"id"`
-	Name  string `json:"name"`
-	Cards []Card `json:"cards"`
+	ID       int    `json:"id"`
+	Name     string `json:"name"`
+	IDPlayer int    `json:"idPlayer"`
+    IDInventory int `json:"idInventory"`
+	Cards    []Card `json:"cards"`
 
 	//db is a transient pointer to database connection
 	db *sql.DB
@@ -663,9 +852,12 @@ func (d *Deck) Persist() error {
 	if d.Name == "" {
 		return errors.New("data.Deck.PersistError: Message='Deck.Name is empty'")
 	}
+	if d.IDPlayer <= 0 {
+		return errors.New("data.Deck.PersistError: Message='Deck.IDPlayer is empty'")
+	}
 
 	if d.ID == 0 {
-		createResult, createErr := d.db.Exec("insert into deck (name) values (?)", d.Name)
+		createResult, createErr := d.db.Exec("insert into deck (name, id_player) values (?, ?)", d.Name, d.IDPlayer)
 		if createErr != nil {
 			return createErr
 		}
@@ -673,10 +865,10 @@ func (d *Deck) Persist() error {
 		if lastIDErr != nil {
 			return lastIDErr
 		}
-		log.Printf("data.Deck.PersistNewDeck: ID=%v Name='%v'", createdID, d.Name)
+		log.Printf("data.Deck.PersistNewDeck: ID=%v IDPlayer=%v Name='%v'", createdID, d.IDPlayer, d.Name)
 		d.ID = int(createdID)
 	} else {
-		updateResult, updateErr := d.db.Exec("update deck set name = ? where id = ?", d.Name, d.ID)
+		updateResult, updateErr := d.db.Exec("update deck set name = ? where id = ? and id_player = ?", d.Name, d.ID, d.IDPlayer)
 		if updateErr != nil {
 			return updateErr
 		}
@@ -685,10 +877,10 @@ func (d *Deck) Persist() error {
 			log.Printf("data.Deck.UpdateGetRowsAffectedEx: Message='%v'", err.Error())
 		} else {
 			if rowsUpdated != 1 {
-				log.Printf("data.Deck.UpdateMultipleEx: Message='%d Records was update for Deck.ID=%d'", rowsUpdated, d.ID)
+				log.Printf("data.Deck.UpdateMultipleEx: Message='%d Records was update for Deck.ID=%d Deck.IDPlayer=%d'", rowsUpdated, d.ID, d.IDPlayer)
 			}
 		}
-		log.Printf("data.Deck.PersistOldDeck: ID=%v Name='%v'", d.ID, d.Name)
+		log.Printf("data.Deck.PersistOldDeck: ID=%v IDPlayer=%v Name='%v'", d.ID, d.IDPlayer, d.Name)
 	}
 
 	if _, deleteErr := d.db.Exec("delete from deck_card where id_deck = ?", d.ID); deleteErr != nil {
@@ -734,6 +926,9 @@ func (d *Deck) Delete() error {
 	if d.ID <= 0 {
 		return errors.New("data.Deck.DeleteError: Message='Deck.ID is empty'")
 	}
+	if d.IDPlayer <= 0 {
+		return errors.New("data.Deck.DeleteError: Message='Deck.IDPlayer is empty'")
+	}
 	deleteCardsResult, deleteCardsErr := d.db.Exec("delete from deck_card where id_deck = ?", d.ID)
 	if deleteCardsErr != nil {
 		return deleteCardsErr
@@ -742,8 +937,8 @@ func (d *Deck) Delete() error {
 	if err != nil {
 		log.Printf("data.Deck.DeleteCardsGetRowsAffectedEx: Message='%v'", err.Error())
 	}
-	log.Printf("data.Deck.DeletedDeckCards: RowsDeleted=%d Deck.ID=%d", cardsRowsDeleted, d.ID)
-	deleteResult, deleteErr := d.db.Exec("delete from deck where id = ?", d.ID)
+	log.Printf("data.Deck.DeletedDeckCards: RowsDeleted=%d Deck.ID=%d and Deck.IDPlayer=%d", cardsRowsDeleted, d.ID, d.IDPlayer)
+	deleteResult, deleteErr := d.db.Exec("delete from deck where id = ? and id_player = ?", d.ID, d.IDPlayer)
 	if deleteErr != nil {
 		return deleteErr
 	}
@@ -752,7 +947,7 @@ func (d *Deck) Delete() error {
 		log.Printf("data.Deck.DeleteGetRowsAffectedEx: Message='%v'", err.Error())
 	} else {
 		if rowsDeleted != 1 {
-			log.Printf("data.Deck.DeleteMultipleEx: Message='%d Records was delete for Deck.ID=%d'", rowsDeleted, d.ID)
+			log.Printf("data.Deck.DeleteMultipleEx: Message='%d Records was delete for Deck.ID=%d and Deck.IDPlayer=%d'", rowsDeleted, d.ID, d.IDPlayer)
 		}
 	}
 	return nil
@@ -760,7 +955,7 @@ func (d *Deck) Delete() error {
 
 //Fetch fetchs the Row and sets the values into Deck instance
 func (d *Deck) Fetch(fetchable Fetchable) error {
-	return fetchable.Scan(&d.ID, &d.Name)
+	return fetchable.Scan(&d.ID, &d.Name, &d.IDPlayer)
 }
 
 //Read gets the entity representation from the database.
@@ -771,7 +966,10 @@ func (d *Deck) Read() error {
 	if d.ID <= 0 {
 		return errors.New("data.Asset.ReadError: Message='Deck.ID is empty'")
 	}
-	row := d.db.QueryRow("select d.id, d.name from deck d where d.id = ?", d.ID)
+	if d.IDPlayer <= 0 {
+		return errors.New("data.Asset.ReadError: Message='Deck.IDPlayer is empty'")
+	}
+	row := d.db.QueryRow("select d.id, d.name, d.id_player from deck d where d.id = ? and d.id_player = ?", d.ID, d.IDPlayer)
 	if err := d.Fetch(row); err != nil {
 		return err
 	}
@@ -787,24 +985,27 @@ func (d *Deck) ReadCards(page int) error {
 	if d.ID <= 0 {
 		return errors.New("data.Deck.ReadCardsError: Message='Deck.ID is empty'")
 	}
+	if d.IDInventory <= 0 {
+		return errors.New("data.Deck.ReadCardsError: Message='Deck.IDInventory is empty'")
+	}
 
 	query :=
 		`select c.id, c.multiverse_number, c.name, c.label, coalesce(c.text, ''),
             coalesce(c.manacost_label, ''), coalesce(c.combatpower_label, ''), c.type_label,
             c.id_rarity, coalesce(c.flavor, ''), c.artist,
             c.rate, c.rate_votes, c.id_asset,
-            coalesce(i.id_inventory, 1) as id_inventory, coalesce(i.quantity, 0) as inventory_quantity,
+            coalesce(i.id_inventory, ?) as id_inventory, coalesce(i.quantity, 0) as inventory_quantity,
             d.id_deck, d.id_board, coalesce(d.quantity, 0) as deck_quantity,
             e.id, e.name, e.label, a.id_asset
         from card c
             left join expansion e on c.id_expansion = e.id
             left join expansion_asset a on a.id_expansion = e.id and a.id_rarity = c.id_rarity
-            left join inventory_card i on i.id_inventory = 1 and i.id_card = c.id
+            left join inventory_card i on i.id_inventory = ? and i.id_card = c.id
             left join deck_card d on d.id_card = c.id
-        where d.id_deck = ?
+        where d.id_deck = ? 
         order by c.id`
 
-	cardRows, readCardsErr := d.db.Query(query, d.ID)
+	cardRows, readCardsErr := d.db.Query(query, d.IDInventory, d.IDInventory, d.ID)
 	if readCardsErr != nil {
 		return readCardsErr
 	}
@@ -817,12 +1018,18 @@ func (d *Deck) ReadCards(page int) error {
 		}
 		tempCards = append(tempCards, nextCard)
 	}
+	if tempCards == nil {
+		tempCards = make([]Card, 0)
+	}
 	d.Cards = tempCards
 	return nil
 }
 
 //Query querys DECKs by restrictions and create a list of Decks references
 func (d *Deck) Query(queryParameters map[string]interface{}, order string) ([]interface{}, error) {
+	if d.IDPlayer <= 0 {
+		return nil, errors.New("data.Deck.ReadCardsError: Message='Deck.IDPlayer is empty'")
+	}
 	var parameterSize int
 	if queryParameters == nil {
 		parameterSize = 0
@@ -832,7 +1039,7 @@ func (d *Deck) Query(queryParameters map[string]interface{}, order string) ([]in
 	restrictions := make([]string, parameterSize)
 	values := make([]interface{}, parameterSize)
 	if parameterSize > 0 {
-		paramIndex := 0
+		paramIndex := 1
 		for k, v := range queryParameters {
 			restrictions[paramIndex] = k
 			values[paramIndex] = v
@@ -841,16 +1048,17 @@ func (d *Deck) Query(queryParameters map[string]interface{}, order string) ([]in
 	}
 	query :=
 		`
-    select d.id, d.name from deck d
+    select d.id, d.name, d.id_player from deck d where d.id_player = ? 
     `
 	if len(restrictions) > 0 {
-		query += "where " + strings.Join(restrictions, " and ") + "\n"
+		query += strings.Join(restrictions, " and ") + "\n"
 	}
 
 	if order != "" {
 		query += "order by " + order
 	}
 
+	values = append([]interface{}{d.IDPlayer}, values...)
 	log.Printf("data.Deck.Query: Query=%v Parameters=%v", query, values)
 	if err := d.Attach(); err != nil {
 		return nil, err
@@ -861,8 +1069,9 @@ func (d *Deck) Query(queryParameters map[string]interface{}, order string) ([]in
 		return nil, queryErr
 	}
 	//Limit the result
-	//decks := make([]interface{}, selectLimit)
-	var decks []interface{}
+	//decks := make([]interface{}, 0)
+	decks := []interface{}{}
+	//var decks []interface{}
 	for rows.Next() {
 		nextDeck := Deck{}
 		if err := nextDeck.Fetch(rows); err != nil {

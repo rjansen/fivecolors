@@ -6,7 +6,7 @@ import (
 	"fmt"
 	"log"
 	//Load Mysql Driver
-	"farm.e-pedion.com/repo/fivecolors/config"
+	"farm.e-pedion.com/repo/config"
 )
 
 //Pool is a variable to hold the Database Pool
