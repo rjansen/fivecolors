@@ -223,7 +223,7 @@ func (c *Card) Query(queryParameters map[string]interface{}, order string) ([]in
 	if order != "" {
 		query += " order by " + order
 	} else {
-		query += " order by c.name"
+		query += " order by e.name, abs(c.multiverse_number)"
 	}
 
 	//Prepend the IDInventory parameter into parameters value
@@ -547,7 +547,7 @@ func (p *Player) ReadDecks(page int) error {
 	query := `
         select d.id
         from deck d
-        where d.id_player = ?;
+        where d.id_player = ? order by d.id
     `
 
 	deckRows, readDecksErr := p.db.Query(query, p.ID)
@@ -782,7 +782,7 @@ func (i *Inventory) ReadCards(page int) error {
             left join expansion_asset a on a.id_expansion = e.id and a.id_rarity = c.id_rarity
             left join inventory_card i on i.id_card = c.id
         where i.id_inventory = ?
-        order by c.id`
+        order by e.name, abs(c.multiverse_number)`
 	rows, readCardsErr := i.db.Query(query, i.ID)
 	if readCardsErr != nil {
 		return readCardsErr
@@ -1003,7 +1003,7 @@ func (d *Deck) ReadCards(page int) error {
             left join inventory_card i on i.id_inventory = ? and i.id_card = c.id
             left join deck_card d on d.id_card = c.id
         where d.id_deck = ? 
-        order by c.id`
+        order by e.name, abs(c.multiverse_number)`
 
 	cardRows, readCardsErr := d.db.Query(query, d.IDInventory, d.IDInventory, d.ID)
 	if readCardsErr != nil {
@@ -1039,7 +1039,7 @@ func (d *Deck) Query(queryParameters map[string]interface{}, order string) ([]in
 	restrictions := make([]string, parameterSize)
 	values := make([]interface{}, parameterSize)
 	if parameterSize > 0 {
-		paramIndex := 1
+		paramIndex := 0
 		for k, v := range queryParameters {
 			restrictions[paramIndex] = k
 			values[paramIndex] = v
@@ -1047,16 +1047,18 @@ func (d *Deck) Query(queryParameters map[string]interface{}, order string) ([]in
 		}
 	}
 	query :=
-		`
-    select d.id, d.name, d.id_player from deck d where d.id_player = ? 
+	`
+    select d.id, d.name, d.id_player from deck d where d.id_player = ?
     `
 	if len(restrictions) > 0 {
-		query += strings.Join(restrictions, " and ") + "\n"
+		query += " and " + strings.Join(restrictions, " and ") + "\n"
 	}
 
 	if order != "" {
 		query += "order by " + order
-	}
+	} else {
+        query += "order by d.id"
+    }
 
 	values = append([]interface{}{d.IDPlayer}, values...)
 	log.Printf("data.Deck.Query: Query=%v Parameters=%v", query, values)

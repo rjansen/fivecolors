@@ -87,6 +87,7 @@ func (h *QueryCardHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		notRegexType := queryParameters.Get("nrx_type")
 		expansionParam := queryParameters.Get("e")
 		numberParam := queryParameters.Get("n")
+        stockQtdParam := queryParameters.Get("q")
 		order := queryParameters.Get("order")
 
 		queryRestrinctions := make(map[string]interface{})
@@ -115,8 +116,8 @@ func (h *QueryCardHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		if numberParam != "" {
 			queryRestrinctions["c.multiverse_number = ?"] = numberParam
 		}
-		if order != "" {
-			order = "c.id"
+		if stockQtdParam != "" {
+			queryRestrinctions["coalesce(i.quantity, 0) >= ?"] = stockQtdParam
 		}
 		card := &data.Card{}
 		card.InventoryCard = data.InventoryCard{IDInventory: h.GetPlayer().IDInventory}
