@@ -9,7 +9,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 
-	"farm.e-pedion.com/repo/fivecolors/config"
+	"farm.e-pedion.com/repo/config"
 	"farm.e-pedion.com/repo/fivecolors/data"
 
 	"farm.e-pedion.com/repo/fivecolors/api"

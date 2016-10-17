@@ -1,20 +1,21 @@
 package security
 
 import (
-    "net/http"
-    "log"
 	"farm.e-pedion.com/repo/fivecolors/data"
 	"farm.e-pedion.com/repo/security/identity"
+	"github.com/valyala/fasthttp"
+	"log"
+	"net/http"
 )
 
 type PlayerInjectableHandler interface {
-    identity.AuthenticatableHandler
-    GetPlayer() *data.Player
+	identity.AuthenticatableHandler
+	GetPlayer() *data.Player
 	SetPlayer(player *data.Player)
 }
 
 type InjectedPlayerHandler struct {
-    identity.AuthenticatedHandler
+	identity.AuthenticatedHandler
 	player *data.Player
 }
 
@@ -39,13 +40,17 @@ func (handler *InjectPlayerHandler) ServeHTTP(w http.ResponseWriter, r *http.Req
 		log.Println("security.UnauthorizedRequest: Message[401 StatusUnauthorized]")
 		w.WriteHeader(http.StatusUnauthorized)
 	}
-    session := handler.GetSession()
-    player := &data.Player{}
-    if err := player.FillFromSession(session); err != nil {
-        log.Printf("security.InjectPlayerHandler.ErrorFillingSession: Err=%v", err.Error())
-        serveUnauthorizedResult(w, r)
-    } else {
-        handler.PlayerInjectableHandler.SetPlayer(player)
-        handler.PlayerInjectableHandler.ServeHTTP(w, r)
-    }
+	session := handler.GetSession()
+	player := &data.Player{}
+	if err := player.FillFromSession(session); err != nil {
+		log.Printf("security.InjectPlayerHandler.ErrorFillingSession: Err=%v", err.Error())
+		serveUnauthorizedResult(w, r)
+	} else {
+		handler.PlayerInjectableHandler.SetPlayer(player)
+		handler.PlayerInjectableHandler.ServeHTTP(w, r)
+	}
+}
+
+func (handler InjectPlayerHandler) HandleRequest(ctx *fasthttp.RequestCtx) {
+
 }

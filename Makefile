@@ -1,7 +1,57 @@
+NAME 		:= fivecolors
+BIN         := $(NAME)
+REPO        := farm.e-pedion.com/repo/$(NAME)
+BUILD       := $(shell git rev-parse --short HEAD)
+#VERSION     := $(shell git describe --tags $(shell git rev-list --tags --max-count=1))
+MAKEFILE    := $(word $(words $(MAKEFILE_LIST)), $(MAKEFILE_LIST))
+BASE_DIR    := $(shell cd $(dir $(MAKEFILE)); pwd)
+PKGS        := $(shell go list ./... | grep -v /vendor/)
+COVERAGE_FILE   := $(NAME).coverage
+COVERAGE_HTML  	:= $(NAME).coverage.html
+PKG_COVERAGE   	:= $(NAME).pkg.coverage
+
+ETC_DIR := ./etc
+CONF_DIR := $(ETC_DIR)/$(NAME)
+CONF_TYPE := yaml
+CONF := $(CONF_DIR)/$(NAME).$(CONF_TYPE)
+
 TEST_PKGS := 
 
-install:
-	go build farm.e-pedion.com/repo/fivecolors
+ENV ?= local
+TEST_PKGS ?= 
+
+.PHONY: default
+default: build
+
+.PHONY: local
+local: 
+	@echo "Set enviroment to local"
+	$(eval ENV = "local")
+
+.PHONY: dev
+dev: 
+	@echo "Set enviroment to dev"
+	$(eval ENV = "dev")
+
+.PHONY: prod
+prod: 
+	@echo "Set enviroment to prod"
+	$(eval ENV = "prod")
+
+.PHONY: check_env
+check_env:
+	@if [ "$(ENV)" == "" ]; then \
+	    echo "Env is blank: $(ENV)"; \
+	    exit 540; \
+	fi
+
+.PHONY: build
+build:
+	go build $(REPO)
+
+.PHONY: run
+run: build
+	./$(NAME) --cfg $(CONF)
 
 pkg_data:
 	@echo "Add data pkg for tests"
@@ -22,6 +72,3 @@ test:
 	    echo "Build With TEST_PKGS=$(TEST_PKGS)" ;\
 	    go test $(TEST_PKGS) ;\
 	fi
-
-run: install
-	./fivecolors

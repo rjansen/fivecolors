@@ -6,10 +6,10 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"log"
 	"regexp"
 	"strings"
 
+	"farm.e-pedion.com/repo/logger"
 	"farm.e-pedion.com/repo/security/identity"
 )
 
@@ -21,8 +21,10 @@ const (
 )
 
 var (
+	log                 logger.Logger
 	selectLimit         = 100
 	primaryKeyViolation = regexp.MustCompile(`Duplicate.*PRIMARY`)
+	NotFoundErr         = sql.ErrNoRows
 )
 
 //Fetchable supply the sql.Scan interface for a struct
@@ -64,11 +66,12 @@ type JSONSerializable interface {
 //AttachToDB binds a new database connection to Attachable reference
 func attachToDB(a Attachable) error {
 	if _, err := a.GetDB(); err != nil {
-		tempDb, err := pool.GetConnection()
+		tempDB, err := pool.GetConnection()
 		if err != nil {
+			log.Error("data.GetConnectionErr", logger.Error(err))
 			return fmt.Errorf("data.Card.AttachError: Messages='%v'", err.Error())
 		}
-		return a.SetDB(tempDb)
+		return a.SetDB(tempDB)
 	}
 	return nil
 }
@@ -229,7 +232,7 @@ func (c *Card) Query(queryParameters map[string]interface{}, order string) ([]in
 	//Prepend the IDInventory parameter into parameters value
 	values = append([]interface{}{c.InventoryCard.IDInventory, c.InventoryCard.IDInventory}, values...)
 
-	log.Printf("data.Card.Query: Query=%v Parameters=%v", query, values)
+	log.Debugf("Card.Query: Query=%v Parameters=%v", query, values)
 	if err := c.Attach(); err != nil {
 		return nil, err
 	}
@@ -350,7 +353,7 @@ func (e *Expansion) Query(queryParameters map[string]interface{}, order string) 
 		query += " order by e.name"
 	}
 
-	log.Printf("data.Expansion.Query: Query=%v Parameters=%v", query, values)
+	log.Debugf("Expansion.Query: Query=%v Parameters=%v", query, values)
 	if err := e.Attach(); err != nil {
 		return nil, err
 	}
@@ -444,7 +447,7 @@ func (a *Asset) Unmarshal(reader io.Reader) error {
 //GetPlayer loads the player from database or creates a new one and associate the login eith him
 func GetPlayer(username string) (*Player, error) {
 	player := &Player{Username: username}
-	if readErr := player.Read(); readErr != nil {
+	if readErr := player.Read(); readErr == NotFoundErr {
 		//Creates a new player and associates the login with him
 		if persistsErr := player.Persist(); persistsErr != nil {
 			return nil, persistsErr
@@ -452,6 +455,8 @@ func GetPlayer(username string) (*Player, error) {
 		if readErr := player.Read(); readErr != nil {
 			return nil, readErr
 		}
+	} else if readErr != nil {
+		return nil, readErr
 	}
 	return player, nil
 }
@@ -468,7 +473,7 @@ type Player struct {
 
 //FillFromSession loads the player attributes from identity.Session object
 func (p *Player) FillFromSession(session *identity.Session) error {
-	log.Printf("FillingPlayerFromSession: Session=%+v", session)
+	log.Debugf("FillingPlayerFromSession: Session=%+v Data=%+v", session, session.Data)
 	if session.Data == nil ||
 		session.Data["id"] == nil || session.Data["id"].(float64) <= 0 ||
 		session.Data["username"] == nil || strings.TrimSpace(session.Data["username"].(string)) == "" ||
@@ -517,7 +522,9 @@ func (p *Player) Fetch(fetchable Fetchable) error {
 //Read gets the entity representation from the database.
 //Player.Username must not empty to perform a Read operation
 func (p *Player) Read() error {
-	p.Attach()
+	if err := p.Attach(); err != nil {
+		return err
+	}
 	defer closeDB(p)
 	if strings.TrimSpace(p.Username) == "" {
 		return errors.New("data.Player.ReadError: Message='Player.Username is empty'")
@@ -608,7 +615,7 @@ func (p *Player) Persist() error {
 		}
 		p.IDInventory = int(inventoryID)
 
-		log.Printf("data.Player.PersistedNewPlayer: ID=%v Username='%v' IDInventory=%v", p.ID, p.Username, p.IDInventory)
+		log.Infof("Player.PersistedNewPlayer: ID=%v Username='%v' IDInventory=%v", p.ID, p.Username, p.IDInventory)
 	} else {
 		update := `update player set dt_lastlogin = current_timestamp() where username = ?`
 
@@ -616,7 +623,7 @@ func (p *Player) Persist() error {
 		if updateErr != nil {
 			return updateErr
 		}
-		log.Printf("data.Player.UpdatedPlayer: ID=%v Username='%v' IDInventory=%v", p.ID, p.Username, p.IDInventory)
+		log.Infof("data.Player.UpdatedPlayer: ID=%v Username='%v' IDInventory=%v", p.ID, p.Username, p.IDInventory)
 	}
 	return nil
 }
@@ -671,7 +678,7 @@ func (i *Inventory) Persist() error {
 		if lastIDErr != nil {
 			return lastIDErr
 		}
-		log.Printf("data.Inventory.PersistedNewInventory: ID=%v IDPlayer=%v Name='%v'", insertedID, i.IDPlayer, i.Name)
+		log.Debugf("Inventory.PersistedNewInventory: ID=%v IDPlayer=%v Name='%v'", insertedID, i.IDPlayer, i.Name)
 		i.ID = int(insertedID)
 	}
 
@@ -686,7 +693,7 @@ func (i *Inventory) Persist() error {
 	for _, card := range i.Cards {
 		_, insertErr := i.db.Exec(insertCardQuery, i.ID, card.ID, card.InventoryCard.Quantity)
 		if insertErr != nil {
-			log.Printf("data.Inventory.InsertCardEx: Message='%v'", insertErr.Error())
+			log.Errorf("Inventory.InsertCardEx: Message='%v'", insertErr.Error())
 			if !primaryKeyViolation.MatchString(insertErr.Error()) {
 				return insertErr
 			}
@@ -696,14 +703,15 @@ func (i *Inventory) Persist() error {
 			}
 			rowsUpdated, err := updateResult.RowsAffected()
 			if err != nil {
-				log.Printf("data.Inventory.UpdateGetRowsAffectedEx: Message='%v'", err.Error())
+				log.Errorf("Inventory.UpdateGetRowsAffectedEx: Message='%v'", err.Error())
 			} else {
 				if rowsUpdated != 1 {
-					log.Printf("data.Inventory.UpdateMultipleEx: Message='%d Card Records was update for Inventory.ID=%d'", rowsUpdated, i.ID)
+					log.Errorf("Inventory.UpdateMultipleEx: Message='%d Card Records was update for Inventory.ID=%d'", rowsUpdated, i.ID)
 				}
 			}
 		}
 	}
+	log.Infof("Inventory.Persisted: ID=%v IDPlayer=%v", i.ID, i.IDPlayer)
 	return nil
 }
 
@@ -723,9 +731,9 @@ func (i *Inventory) Delete() error {
 	}
 	cardsRowsDeleted, cardsRowsDeletedErr := deleteCardsResult.RowsAffected()
 	if cardsRowsDeletedErr != nil {
-		log.Printf("data.Inventory.DeleteCardsGetRowsAffectedEx: Message='%v'", cardsRowsDeletedErr.Error())
+		log.Errorf("Inventory.DeleteCardsGetRowsAffectedEx: Message='%v'", cardsRowsDeletedErr.Error())
 	} else {
-		log.Printf("data.Inventory.DeleteCards: DeletedCards=%v ID=%d IDPlayer=%v", cardsRowsDeleted, i.ID, i.IDPlayer)
+		log.Debugf("Inventory.DeleteCards: DeletedCards=%v ID=%d IDPlayer=%v", cardsRowsDeleted, i.ID, i.IDPlayer)
 	}
 	deleteResult, deleteErr := i.db.Exec("delete from inventory where id = ? and id_player = ?", i.ID, i.IDPlayer)
 	if deleteErr != nil {
@@ -733,12 +741,13 @@ func (i *Inventory) Delete() error {
 	}
 	rowsDeleted, err := deleteResult.RowsAffected()
 	if err != nil {
-		log.Printf("data.Inventory.DeleteGetRowsAffectedEx: Message='%v'", err.Error())
+		log.Errorf("data.Inventory.DeleteGetRowsAffectedEx: Message='%v'", err.Error())
 	} else {
 		if rowsDeleted != 1 {
-			log.Printf("data.Inventory.DeleteMultipleEx: Message='%d Records was delete for Inventory.ID=%d and Inventory.IDPlayer=%d'", rowsDeleted, i.ID, i.IDPlayer)
+			log.Errorf("data.Inventory.DeleteMultipleEx: Message='%d Records was delete for Inventory.ID=%d and Inventory.IDPlayer=%d'", rowsDeleted, i.ID, i.IDPlayer)
 		}
 	}
+	log.Infof("Inventory.Deleted: ID=%d IDPlayer=%v", i.ID, i.IDPlayer)
 	return nil
 }
 
@@ -813,11 +822,11 @@ func (i *Inventory) Unmarshal(reader io.Reader) error {
 
 //Deck represents the DECK entity
 type Deck struct {
-	ID       int    `json:"id"`
-	Name     string `json:"name"`
-	IDPlayer int    `json:"idPlayer"`
-    IDInventory int `json:"idInventory"`
-	Cards    []Card `json:"cards"`
+	ID          int    `json:"id"`
+	Name        string `json:"name"`
+	IDPlayer    int    `json:"idPlayer"`
+	IDInventory int    `json:"idInventory"`
+	Cards       []Card `json:"cards"`
 
 	//db is a transient pointer to database connection
 	db *sql.DB
@@ -865,7 +874,7 @@ func (d *Deck) Persist() error {
 		if lastIDErr != nil {
 			return lastIDErr
 		}
-		log.Printf("data.Deck.PersistNewDeck: ID=%v IDPlayer=%v Name='%v'", createdID, d.IDPlayer, d.Name)
+		log.Debugf("Deck.PersistNewDeck: ID=%v IDPlayer=%v Name='%v'", createdID, d.IDPlayer, d.Name)
 		d.ID = int(createdID)
 	} else {
 		updateResult, updateErr := d.db.Exec("update deck set name = ? where id = ? and id_player = ?", d.Name, d.ID, d.IDPlayer)
@@ -874,13 +883,13 @@ func (d *Deck) Persist() error {
 		}
 		rowsUpdated, err := updateResult.RowsAffected()
 		if err != nil {
-			log.Printf("data.Deck.UpdateGetRowsAffectedEx: Message='%v'", err.Error())
+			log.Errorf("Deck.UpdateGetRowsAffectedEx: Message='%v'", err.Error())
 		} else {
 			if rowsUpdated != 1 {
-				log.Printf("data.Deck.UpdateMultipleEx: Message='%d Records was update for Deck.ID=%d Deck.IDPlayer=%d'", rowsUpdated, d.ID, d.IDPlayer)
+				log.Errorf("data.Deck.UpdateMultipleEx: Message='%d Records was update for Deck.ID=%d Deck.IDPlayer=%d'", rowsUpdated, d.ID, d.IDPlayer)
 			}
 		}
-		log.Printf("data.Deck.PersistOldDeck: ID=%v IDPlayer=%v Name='%v'", d.ID, d.IDPlayer, d.Name)
+		log.Debugf("data.Deck.PersistOldDeck: ID=%v IDPlayer=%v Name='%v'", d.ID, d.IDPlayer, d.Name)
 	}
 
 	if _, deleteErr := d.db.Exec("delete from deck_card where id_deck = ?", d.ID); deleteErr != nil {
@@ -898,7 +907,7 @@ func (d *Deck) Persist() error {
 	for _, card := range d.Cards {
 		_, insertErr := d.db.Exec(insertCardQuery, d.ID, card.ID, card.DeckCard.IDBoard, card.DeckCard.Quantity)
 		if insertErr != nil {
-			log.Printf("data.Deck.InsertCardEx: Message='%v'", insertErr.Error())
+			log.Errorf("Deck.InsertCardEx: Message='%v'", insertErr.Error())
 			if !primaryKeyViolation.MatchString(insertErr.Error()) {
 				return insertErr
 			}
@@ -908,14 +917,15 @@ func (d *Deck) Persist() error {
 			}
 			rowsUpdated, err := updateResult.RowsAffected()
 			if err != nil {
-				log.Printf("data.Deck.UpdateGetRowsAffectedEx: Message='%v'", err.Error())
+				log.Errorf("Deck.UpdateGetRowsAffectedEx: Message='%v'", err.Error())
 			} else {
 				if rowsUpdated != 1 {
-					log.Printf("data.Deck.UpdateMultipleEx: Message='%d Records was update for Inventory.ID=%d'", rowsUpdated, d.ID)
+					log.Errorf("Deck.UpdateMultipleEx: Message='%d Records was update for Inventory.ID=%d'", rowsUpdated, d.ID)
 				}
 			}
 		}
 	}
+	log.Infof("Deck.Persisted: ID=%v IDPlayer=%v", d.ID, d.IDPlayer)
 	return nil
 }
 
@@ -935,21 +945,22 @@ func (d *Deck) Delete() error {
 	}
 	cardsRowsDeleted, err := deleteCardsResult.RowsAffected()
 	if err != nil {
-		log.Printf("data.Deck.DeleteCardsGetRowsAffectedEx: Message='%v'", err.Error())
+		log.Errorf("Deck.DeleteCardsGetRowsAffectedEx: Message='%v'", err.Error())
 	}
-	log.Printf("data.Deck.DeletedDeckCards: RowsDeleted=%d Deck.ID=%d and Deck.IDPlayer=%d", cardsRowsDeleted, d.ID, d.IDPlayer)
+	log.Debugf("Deck.DeletedDeckCards: RowsDeleted=%d Deck.ID=%d and Deck.IDPlayer=%d", cardsRowsDeleted, d.ID, d.IDPlayer)
 	deleteResult, deleteErr := d.db.Exec("delete from deck where id = ? and id_player = ?", d.ID, d.IDPlayer)
 	if deleteErr != nil {
 		return deleteErr
 	}
 	rowsDeleted, err := deleteResult.RowsAffected()
 	if err != nil {
-		log.Printf("data.Deck.DeleteGetRowsAffectedEx: Message='%v'", err.Error())
+		log.Errorf("Deck.DeleteGetRowsAffectedEx: Message='%v'", err.Error())
 	} else {
 		if rowsDeleted != 1 {
-			log.Printf("data.Deck.DeleteMultipleEx: Message='%d Records was delete for Deck.ID=%d and Deck.IDPlayer=%d'", rowsDeleted, d.ID, d.IDPlayer)
+			log.Errorf("Deck.DeleteMultipleEx: Message='%d Records was delete for Deck.ID=%d and Deck.IDPlayer=%d'", rowsDeleted, d.ID, d.IDPlayer)
 		}
 	}
+	log.Infof("Deck.Deleted: Deck.ID=%d and Deck.IDPlayer=%d", d.ID, d.IDPlayer)
 	return nil
 }
 
@@ -1047,7 +1058,7 @@ func (d *Deck) Query(queryParameters map[string]interface{}, order string) ([]in
 		}
 	}
 	query :=
-	`
+		`
     select d.id, d.name, d.id_player from deck d where d.id_player = ?
     `
 	if len(restrictions) > 0 {
@@ -1057,11 +1068,11 @@ func (d *Deck) Query(queryParameters map[string]interface{}, order string) ([]in
 	if order != "" {
 		query += "order by " + order
 	} else {
-        query += "order by d.id"
-    }
+		query += "order by d.id"
+	}
 
 	values = append([]interface{}{d.IDPlayer}, values...)
-	log.Printf("data.Deck.Query: Query=%v Parameters=%v", query, values)
+	log.Debugf("Deck.Query: Query=%v Parameters=%v", query, values)
 	if err := d.Attach(); err != nil {
 		return nil, err
 	}
