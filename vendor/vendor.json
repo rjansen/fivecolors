@@ -15,64 +15,64 @@
 			"revisionTime": "2016-10-10T14:12:50Z"
 		},
 		{
-			"checksumSHA1": "hCAC6fw7MsR6KNGdyNyeiAaxZWI=",
+			"checksumSHA1": "eggxb4I080TshjdsVUVHd8fiS/s=",
 			"path": "farm.e-pedion.com/repo/security",
-			"revision": "4cf1213cbe33541fa4cc3fcf2265b88dd17c9e81",
-			"revisionTime": "2016-10-10T15:07:17Z"
+			"revision": "d1ff21f46659f16f901214960ad3f3fdd72544f5",
+			"revisionTime": "2016-10-17T03:17:05Z"
 		},
 		{
 			"checksumSHA1": "9ZS7tNgqWSFF1x6/LIgi8Tbbxmk=",
 			"path": "farm.e-pedion.com/repo/security/asset",
-			"revision": "4cf1213cbe33541fa4cc3fcf2265b88dd17c9e81",
-			"revisionTime": "2016-10-10T15:07:17Z"
+			"revision": "d1ff21f46659f16f901214960ad3f3fdd72544f5",
+			"revisionTime": "2016-10-17T03:17:05Z"
 		},
 		{
 			"checksumSHA1": "wE+0NRw8G6MkyLmBDPM8aoTUEZM=",
 			"path": "farm.e-pedion.com/repo/security/client/cassandra",
-			"revision": "4cf1213cbe33541fa4cc3fcf2265b88dd17c9e81",
-			"revisionTime": "2016-10-10T15:07:17Z"
+			"revision": "d1ff21f46659f16f901214960ad3f3fdd72544f5",
+			"revisionTime": "2016-10-17T03:17:05Z"
 		},
 		{
-			"checksumSHA1": "hc/Lmnp5NfOPHFm1HEcmsX2zTkA=",
+			"checksumSHA1": "tqih6J4m12Ng+3lVysg5hdoWOVo=",
 			"path": "farm.e-pedion.com/repo/security/client/http",
-			"revision": "4cf1213cbe33541fa4cc3fcf2265b88dd17c9e81",
-			"revisionTime": "2016-10-10T15:07:17Z"
+			"revision": "d1ff21f46659f16f901214960ad3f3fdd72544f5",
+			"revisionTime": "2016-10-17T03:17:05Z"
 		},
 		{
 			"checksumSHA1": "ACEV981h7+IJ7MeN4vvG9ap+GJE=",
 			"path": "farm.e-pedion.com/repo/security/config",
-			"revision": "4cf1213cbe33541fa4cc3fcf2265b88dd17c9e81",
-			"revisionTime": "2016-10-10T15:07:17Z"
+			"revision": "d1ff21f46659f16f901214960ad3f3fdd72544f5",
+			"revisionTime": "2016-10-17T03:17:05Z"
 		},
 		{
-			"checksumSHA1": "BcOI6QSEuNmE8uBZeqqzetKmcbQ=",
+			"checksumSHA1": "BY0psaUxr2bEkJbzknPDXCYjb+M=",
 			"path": "farm.e-pedion.com/repo/security/data",
-			"revision": "4cf1213cbe33541fa4cc3fcf2265b88dd17c9e81",
-			"revisionTime": "2016-10-10T15:07:17Z"
+			"revision": "d1ff21f46659f16f901214960ad3f3fdd72544f5",
+			"revisionTime": "2016-10-17T03:17:05Z"
 		},
 		{
 			"checksumSHA1": "KIm0T9voAnyqUtEbOXFNbYgt8UI=",
 			"path": "farm.e-pedion.com/repo/security/handler",
-			"revision": "4cf1213cbe33541fa4cc3fcf2265b88dd17c9e81",
-			"revisionTime": "2016-10-10T15:07:17Z"
+			"revision": "d1ff21f46659f16f901214960ad3f3fdd72544f5",
+			"revisionTime": "2016-10-17T03:17:05Z"
 		},
 		{
-			"checksumSHA1": "tWkiWQuwnkbhNecownhhhoLb9rU=",
+			"checksumSHA1": "ixb/yzdTvgtd9XTl7M43WP6/I1s=",
 			"path": "farm.e-pedion.com/repo/security/identity",
-			"revision": "4cf1213cbe33541fa4cc3fcf2265b88dd17c9e81",
-			"revisionTime": "2016-10-10T15:07:17Z"
+			"revision": "d1ff21f46659f16f901214960ad3f3fdd72544f5",
+			"revisionTime": "2016-10-17T03:17:05Z"
 		},
 		{
-			"checksumSHA1": "CYmgE/gEmj7dK9HSK0rGilyMT+E=",
+			"checksumSHA1": "s+s6K+de0pdyhLtZ7Oym7C4tkVg=",
 			"path": "farm.e-pedion.com/repo/security/proxy",
-			"revision": "4cf1213cbe33541fa4cc3fcf2265b88dd17c9e81",
-			"revisionTime": "2016-10-10T15:07:17Z"
+			"revision": "d1ff21f46659f16f901214960ad3f3fdd72544f5",
+			"revisionTime": "2016-10-17T03:17:05Z"
 		},
 		{
 			"checksumSHA1": "Z16XIlQHOnk3fIBbgamBeK4hDj0=",
 			"path": "farm.e-pedion.com/repo/security/util",
-			"revision": "4cf1213cbe33541fa4cc3fcf2265b88dd17c9e81",
-			"revisionTime": "2016-10-10T15:07:17Z"
+			"revision": "d1ff21f46659f16f901214960ad3f3fdd72544f5",
+			"revisionTime": "2016-10-17T03:17:05Z"
 		},
 		{
 			"checksumSHA1": "xMFUuPv/35b7LGdQ450dUvNKxI4=",
