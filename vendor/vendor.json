@@ -3,16 +3,16 @@
 	"ignore": "test",
 	"package": [
 		{
-			"checksumSHA1": "6dRED3fmPLmkSOFScC3IZ1tMgYY=",
+			"checksumSHA1": "saRdqhwimWjSqWa1TyUQ49i9ZkU=",
 			"path": "farm.e-pedion.com/repo/config",
-			"revision": "c6338cbddab84704998ae1bf2d2e58f6a9185bc9",
-			"revisionTime": "2016-06-13T00:45:20Z"
+			"revision": "ab4ff23e2ebd055f23af9d4311b088e05c0a2606",
+			"revisionTime": "2016-11-13T00:35:52Z"
 		},
 		{
-			"checksumSHA1": "z9phx/vtZ0DC963QpLeU53DbgII=",
+			"checksumSHA1": "p46Yqa5oY9p1MO5bgbN5KiO36zQ=",
 			"path": "farm.e-pedion.com/repo/logger",
-			"revision": "1498f44c4c5f2c0baf71fc18d46035b52fcd699e",
-			"revisionTime": "2016-10-10T14:12:50Z"
+			"revision": "671aad1fb59503f1336f17fc55d0babdd89d0ac8",
+			"revisionTime": "2016-11-13T13:57:34Z"
 		},
 		{
 			"checksumSHA1": "eggxb4I080TshjdsVUVHd8fiS/s=",
@@ -57,10 +57,10 @@
 			"revisionTime": "2016-10-17T03:17:05Z"
 		},
 		{
-			"checksumSHA1": "ixb/yzdTvgtd9XTl7M43WP6/I1s=",
+			"checksumSHA1": "onOGlJQkRGqOzM7u9XxAt+Uo/Eg=",
 			"path": "farm.e-pedion.com/repo/security/identity",
-			"revision": "d1ff21f46659f16f901214960ad3f3fdd72544f5",
-			"revisionTime": "2016-10-17T03:17:05Z"
+			"revision": "4e468ed3ed0ea3e69bc5c9d6daa3a6cfe4df19a8",
+			"revisionTime": "2016-11-14T06:24:42Z"
 		},
 		{
 			"checksumSHA1": "s+s6K+de0pdyhLtZ7Oym7C4tkVg=",

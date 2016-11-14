@@ -68,7 +68,7 @@ func attachToDB(a Attachable) error {
 	if _, err := a.GetDB(); err != nil {
 		tempDB, err := pool.GetConnection()
 		if err != nil {
-			log.Error("data.GetConnectionErr", logger.Error(err))
+			log.Error("data.GetConnectionErr", logger.Err(err))
 			return fmt.Errorf("data.Card.AttachError: Messages='%v'", err.Error())
 		}
 		return a.SetDB(tempDB)
@@ -474,22 +474,23 @@ type Player struct {
 //FillFromSession loads the player attributes from identity.Session object
 func (p *Player) FillFromSession(session *identity.Session) error {
 	log.Debugf("FillingPlayerFromSession: Session=%+v Data=%+v", session, session.Data)
-	if session.Data == nil ||
-		session.Data["id"] == nil || session.Data["id"].(float64) <= 0 ||
-		session.Data["username"] == nil || strings.TrimSpace(session.Data["username"].(string)) == "" ||
-		session.Data["idInventory"] == nil || session.Data["idInventory"].(float64) <= 0 ||
-		session.Data["idDecks"] == nil || len(session.Data["idDecks"].([]interface{})) < 0 {
+	if session.Data == nil || len(session.Data) <= 0 {
 		return errors.New("Some required attributes to fill a player is missing")
 	}
-	p.ID = int(session.Data["id"].(float64))
-	p.Username = session.Data["username"].(string)
-	p.IDInventory = int(session.Data["idInventory"].(float64))
-	idDecks := session.Data["idDecks"].([]interface{})
-	p.IDDecks = make([]int, len(idDecks))
-	for i := range idDecks {
-		p.IDDecks[i] = int(idDecks[i].(float64))
+	if err := p.Unmarshal(session.Data); err != nil {
+		return errors.New("PlayerUmarshalFromSessionErr err=" + err.Error())
 	}
 	return nil
+}
+
+//Marshal writes a json representation of Inventory
+func (p *Player) Marshal() ([]byte, error) {
+	return json.Marshal(p)
+}
+
+//Unmarshal reads a json representation of Inventory
+func (p *Player) Unmarshal(data []byte) error {
+	return json.Unmarshal(data, &p)
 }
 
 //SetDB attachs a database connection to Expansion

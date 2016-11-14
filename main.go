@@ -19,23 +19,23 @@ func main() {
 	}
 	configuration := config.Get()
 
-	err = logger.Setup(configuration.Logger)
+	err = logger.Setup(&configuration.Logger)
 	if err != nil {
 		panic(err)
 	}
-	log := logger.GetLogger()
+	log := logger.Get()
 
 	if err = data.Setup(configuration.DB); err != nil {
-		log.Panic("FivecolorsSetupError", logger.Error(err))
+		log.Panic("FivecolorsSetupError", logger.Err(err))
 	}
 	defer data.Close()
 
-	if err = identity.Setup(); err != nil {
-		log.Panic("IdentitySetupError", logger.Error(err))
+	if err = identity.Setup(&configuration.Proxy, &configuration.Security); err != nil {
+		log.Panic("IdentitySetupError", logger.Err(err))
 	}
 
 	if err = api.Setup(*configuration); err != nil {
-		log.Panic("ApiSetupError", logger.Error(err))
+		log.Panic("ApiSetupError", logger.Err(err))
 	}
 
 	http.Handle("/player/", api.NewGetPlayerHandler())
