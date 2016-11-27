@@ -2,10 +2,12 @@ package security
 
 import (
 	"farm.e-pedion.com/repo/fivecolors/data"
+	"farm.e-pedion.com/repo/logger"
 	"farm.e-pedion.com/repo/security/identity"
 	"github.com/valyala/fasthttp"
 	"log"
 	"net/http"
+	"strings"
 )
 
 type PlayerInjectableHandler interface {
@@ -52,5 +54,53 @@ func (handler *InjectPlayerHandler) ServeHTTP(w http.ResponseWriter, r *http.Req
 }
 
 func (handler InjectPlayerHandler) HandleRequest(ctx *fasthttp.RequestCtx) {
+
+}
+
+//NewIdentityHandler creates a new GetPlayerHandler instance
+func NewIdentityHandler() http.Handler {
+	return identity.NewHeaderAuthenticatedHandler(&IdentityHandler{})
+}
+
+//IdentityHandler is the handler to get Players
+type IdentityHandler struct {
+	identity.AuthenticatedHandler
+}
+
+func (h IdentityHandler) HandleRequest(ctx *fasthttp.RequestCtx) {
+
+}
+
+func (h *IdentityHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+	urlPathParameters := strings.Split(r.URL.Path, "/")
+	queryParameters := r.URL.Query()
+	logger.Infof("IdentityHandler: URL[%q] PathParameters[%q] QueryParameters[%q]", r.URL.Path, urlPathParameters, queryParameters)
+
+	session := h.GetSession()
+	if strings.TrimSpace(session.Username) == "" {
+		http.NotFound(w, r)
+		return
+	}
+	player, err := data.GetPlayer(session.Username)
+	if err != nil {
+		logger.Errorf("IdentityHandler.GetPlayerError: Session.ID[%v] Player.Username[%v] Error[%v]", session.ID, session.Username, err.Error())
+		http.NotFound(w, r)
+		//http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	session.Data = player.SessionData()
+
+	w.Header().Set("Content-Type", "application/json; charset=utf-8")
+	w.WriteHeader(http.StatusOK)
+
+	jwtBytes, err := identity.Serialize(*session)
+	bytesWritten, err := w.Write(jwtBytes)
+	if err != nil {
+		logger.Errorf("IdentityHandler.WriteResponseError: Player[%v] Error[%v]", player, err)
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+	} else {
+		logger.Debugf("IdentityHandler.JwtWritten: Player[%v] Bytes[%v]", player, bytesWritten)
+	}
 
 }

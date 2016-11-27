@@ -473,14 +473,32 @@ type Player struct {
 
 //FillFromSession loads the player attributes from identity.Session object
 func (p *Player) FillFromSession(session *identity.Session) error {
-	log.Debugf("FillingPlayerFromSession: Session=%+v Data=%+v", session, session.Data)
-	if session.Data == nil || len(session.Data) <= 0 {
+	log.Infof("FillingPlayerFromSession: Session=%+v", session)
+	if session.Data == nil ||
+		session.Data["id"] == nil || session.Data["id"].(float64) <= 0 ||
+		session.Data["username"] == nil || strings.TrimSpace(session.Data["username"].(string)) == "" ||
+		session.Data["idInventory"] == nil || session.Data["idInventory"].(float64) <= 0 ||
+		session.Data["idDecks"] == nil || len(session.Data["idDecks"].([]interface{})) < 0 {
 		return errors.New("Some required attributes to fill a player is missing")
 	}
-	if err := p.Unmarshal(session.Data); err != nil {
-		return errors.New("PlayerUmarshalFromSessionErr err=" + err.Error())
+	p.ID = int(session.Data["id"].(float64))
+	p.Username = session.Data["username"].(string)
+	p.IDInventory = int(session.Data["idInventory"].(float64))
+	idDecks := session.Data["idDecks"].([]interface{})
+	p.IDDecks = make([]int, len(idDecks))
+	for i := range idDecks {
+		p.IDDecks[i] = int(idDecks[i].(float64))
 	}
 	return nil
+}
+
+func (p *Player) SessionData() map[string]interface{} {
+	return map[string]interface{}{
+		"id":          p.ID,
+		"username":    p.Username,
+		"idInventory": p.IDInventory,
+		"idDecks":     p.IDDecks,
+	}
 }
 
 //Marshal writes a json representation of Inventory
@@ -1015,7 +1033,7 @@ func (d *Deck) ReadCards(page int) error {
             left join inventory_card i on i.id_inventory = ? and i.id_card = c.id
             left join deck_card d on d.id_card = c.id
         where d.id_deck = ? 
-        order by e.name, abs(c.multiverse_number)`
+        order by c.type_label, e.name, abs(c.multiverse_number)`
 
 	cardRows, readCardsErr := d.db.Query(query, d.IDInventory, d.IDInventory, d.ID)
 	if readCardsErr != nil {

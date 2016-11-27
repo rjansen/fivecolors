@@ -6,6 +6,7 @@ import (
 	"farm.e-pedion.com/repo/fivecolors/api"
 	"farm.e-pedion.com/repo/fivecolors/config"
 	"farm.e-pedion.com/repo/fivecolors/data"
+	"farm.e-pedion.com/repo/fivecolors/security"
 	"farm.e-pedion.com/repo/logger"
 	"farm.e-pedion.com/repo/security/identity"
 	_ "github.com/go-sql-driver/mysql"
@@ -30,7 +31,7 @@ func main() {
 	}
 	defer data.Close()
 
-	if err = identity.Setup(&configuration.Proxy, &configuration.Security); err != nil {
+	if err = identity.Setup(&configuration.Identity); err != nil {
 		log.Panic("IdentitySetupError", logger.Err(err))
 	}
 
@@ -38,6 +39,7 @@ func main() {
 		log.Panic("ApiSetupError", logger.Err(err))
 	}
 
+	http.Handle("/identity/", security.NewIdentityHandler())
 	http.Handle("/player/", api.NewGetPlayerHandler())
 	http.Handle("/card/", api.NewQueryCardHandler())
 	http.Handle("/expansion/", api.NewQueryExpansionHandler())

@@ -40,24 +40,22 @@ func Setup() error {
 
 //Configuration holds all possible configurations structs
 type Configuration struct {
-	Version     string                  `mapstructure:"version"`
-	Environment string                  `mapstructure:"environment"`
-	DB          DBConfig                `mapstructure:"db"`
-	Handler     HandlerConfig           `mapstructure:"handler"`
-	Logger      logger.Configuration    `mapstructure:"logger"`
-	Proxy       identity.ProxyConfig    `mapstructure:"proxy"`
-	Security    identity.SecurityConfig `mapstructure:"security"`
+	Version     string                 `mapstructure:"version"`
+	Environment string                 `mapstructure:"environment"`
+	DB          DBConfig               `mapstructure:"db"`
+	Handler     HandlerConfig          `mapstructure:"handler"`
+	Logger      logger.Configuration   `mapstructure:"logger"`
+	Identity    identity.Configuration `mapstructure:"identity"`
 }
 
 func (c Configuration) String() string {
 	//return fmt.Sprintf("Configuration[Version=%v ProxyConfig=%v DBConfig=%v SecurityConfig=%v CacheConfig=%v LoggerConfig=%v]", c.Version, c.ProxyConfig, c.DBConfig, c.SecurityConfig, c.CacheConfig, c.LoggerConfig)
-	return fmt.Sprintf("Configuration Version=%s Environment=%s Logger=%s Handler=%s DB=%s Proxy=%s Security=%s",
+	return fmt.Sprintf("Configuration Version=%s Environment=%s Logger=%s Handler=%s DB=%s Identity=%s",
 		c.Version, c.Environment,
 		c.Logger.String(),
 		c.Handler.String(),
 		c.DB.String(),
-		c.Proxy.String(),
-		c.Security.String(),
+		c.Identity.String(),
 	)
 }
 

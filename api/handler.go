@@ -334,7 +334,7 @@ func (h *GetPlayerHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	}
 	player, err := data.GetPlayer(session.Username)
 	if err != nil {
-		log.Errorf("GetPlayerHandler.GetPlayerError: Session.Id[%v] Player.Username[%v] Error[%v]", session.Id, session.Username, err.Error())
+		log.Errorf("GetPlayerHandler.GetPlayerError: Session.ID[%v] Player.Username[%v] Error[%v]", session.ID, session.Username, err.Error())
 		http.NotFound(w, r)
 		//http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
