@@ -623,8 +623,8 @@ func (p *Player) Persist() error {
 		}
 		p.ID = int(insertedID)
 
-		insertInventory := `insert into inventory (name) values (?)`
-		insertInvetoryResult, insertInvetoryErr := p.db.Exec(insertInventory, p.Username)
+		insertInventory := `insert into inventory (name, id_player) values (?, ?)`
+		insertInvetoryResult, insertInvetoryErr := p.db.Exec(insertInventory, p.Username, p.ID)
 		if insertInvetoryErr != nil {
 			return insertInvetoryErr
 		}
