@@ -4,14 +4,19 @@ import (
 	"io"
 	//"bytes"
 	"encoding/json"
+	"errors"
 	"net/http"
+	"path"
 	"strconv"
 	"strings"
 
+	haki "farm.e-pedion.com/repo/context/http"
 	"farm.e-pedion.com/repo/fivecolors/config"
 	"farm.e-pedion.com/repo/fivecolors/data"
 	"farm.e-pedion.com/repo/fivecolors/security"
 	"farm.e-pedion.com/repo/logger"
+	l "farm.e-pedion.com/repo/logger"
+	raizel "farm.e-pedion.com/repo/persistence"
 	"farm.e-pedion.com/repo/security/identity"
 	"github.com/valyala/fasthttp"
 )
@@ -467,60 +472,31 @@ func (h *DeleteInventoryHandler) ServeHTTP(w http.ResponseWriter, r *http.Reques
 }
 
 //NewDeckHandler creates a new DeckHandler instance
-func NewDeckHandler() http.Handler {
-	return identity.NewHeaderAuthenticatedHandler(
-		security.NewInjectPlayerHandler(
-			&DeckHandler{
-				getHandler:    &QueryDeckHandler{},
-				postHandler:   &PostDeckHandler{},
-				deleteHandler: &DeleteDeckHandler{},
-			}))
-	//return identity.NewCookieAuthenticatedHandler(&GetCardHandler{})
+func NewDeckHandler() http.HandlerFunc {
+	var deckHandler DeckHandler
+	return identity.Authorize(deckHandler.ServeHTTP)
 }
 
 //DeckHandler is the handler to get and post Decks
-type DeckHandler struct {
-	security.InjectedPlayerHandler
-	getHandler    security.PlayerInjectableHandler
-	postHandler   security.PlayerInjectableHandler
-	deleteHandler security.PlayerInjectableHandler
-	//    session *identity.Session
-}
+type DeckHandler struct{}
 
-func (h DeckHandler) HandleRequest(ctx *fasthttp.RequestCtx) {
-
-}
-
-func (h *DeckHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	session := h.GetSession()
-	player := h.GetPlayer()
-	if r.Method == "GET" {
-		h.getHandler.SetSession(session)
-		h.getHandler.SetPlayer(player)
-		h.getHandler.ServeHTTP(w, r)
-	} else if r.Method == "POST" {
-		h.postHandler.SetSession(session)
-		h.postHandler.SetPlayer(player)
-		h.postHandler.ServeHTTP(w, r)
-	} else if r.Method == "DELETE" {
-		h.deleteHandler.SetSession(session)
-		h.deleteHandler.SetPlayer(player)
-		h.deleteHandler.ServeHTTP(w, r)
-	} else {
-		http.Error(w, "DeckHandler.MethodNotAllowed: Method="+r.Method, http.StatusInternalServerError)
+func (h DeckHandler) ServeHTTP(session *identity.Session, w http.ResponseWriter, r *http.Request) error {
+	player := new(data.Player)
+	if err := player.FillFromSession(session); err != nil {
+		return err
 	}
+	if r.Method == "GET" {
+		return h.Query(player, w, r)
+	} else if r.Method == "POST" {
+		return h.Persist(player, w, r)
+	} else if r.Method == "DELETE" {
+		return h.Delete(player, w, r)
+	}
+	http.Error(w, "DeckHandler.MethodNotAllowed: Method="+r.Method, http.StatusMethodNotAllowed)
+	return errors.New(http.StatusText(http.StatusMethodNotAllowed))
 }
 
-//PostDeckHandler is the handler to creates Decks
-type PostDeckHandler struct {
-	security.InjectedPlayerHandler
-}
-
-func (h PostDeckHandler) HandleRequest(ctx *fasthttp.RequestCtx) {
-
-}
-
-func (h *PostDeckHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+func (h DeckHandler) Persist(player *data.Player, w http.ResponseWriter, r *http.Request) error {
 	urlPathParameters := strings.Split(r.URL.Path, "/")
 	queryParameters := r.URL.Query()
 	log.Infof("PostDeckdHandler: URL[%q] PathParameters[%q] QueryParameters[%q]", r.URL.Path, urlPathParameters, queryParameters)
@@ -529,14 +505,14 @@ func (h *PostDeckHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	if err := deck.Unmarshal(r.Body); err != nil {
 		log.Errorf("PostDeckHandler.UnreadableBodyError: Error[%v]", err)
 		http.Error(w, "PostDeckHandler.UnreadableBodyError", http.StatusBadRequest)
-		return
+		return err
 	}
-	deck.IDPlayer = h.GetPlayer().ID
+	deck.IDPlayer = player.ID
 	isCreateRequest := deck.ID == 0
 	if err := deck.Persist(); err != nil {
 		log.Errorf("PostDeckHandler.CreateDeckError: Error[%v]", err)
 		http.Error(w, "PostDeckHandler.CreateDeckError", http.StatusBadRequest)
-		return
+		return err
 	}
 	w.Header().Set("Content-Type", "application/json; charset=utf-8")
 	if isCreateRequest {
@@ -545,18 +521,10 @@ func (h *PostDeckHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	} else {
 		w.WriteHeader(http.StatusAccepted)
 	}
+	return nil
 }
 
-//QueryDeckHandler is the handler to get Decks
-type QueryDeckHandler struct {
-	security.InjectedPlayerHandler
-}
-
-func (h QueryDeckHandler) HandleRequest(ctx *fasthttp.RequestCtx) {
-
-}
-
-func (h *QueryDeckHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+func (h DeckHandler) Query(player *data.Player, w http.ResponseWriter, r *http.Request) error {
 	urlPathParameters := strings.Split(r.URL.Path, "/")
 	queryParameters := r.URL.Query()
 	log.Infof("QueryDeckHandler: URL[%q] PathParameters[%q] QueryParameters[%q]", r.URL.Path, urlPathParameters, queryParameters)
@@ -573,8 +541,8 @@ func (h *QueryDeckHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	}
 	if deckID != "" {
 		deck := &data.Deck{
-			IDPlayer:    h.GetPlayer().ID,
-			IDInventory: h.GetPlayer().IDInventory,
+			IDPlayer:    player.ID,
+			IDInventory: player.IDInventory,
 		}
 		var convertIDErr error
 		deck.ID, convertIDErr = strconv.Atoi(deckID)
@@ -582,13 +550,13 @@ func (h *QueryDeckHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			log.Errorf("QueryDeckHandler.DeckReadError: Deck.ID[%v] Error[%v]", deckID, convertIDErr)
 			http.NotFound(w, r)
 			//http.Error(w, err.Error(), http.StatusInternalServerError)
-			return
+			return convertIDErr
 		}
 		if err := deck.Read(); err != nil {
 			log.Errorf("QueryDeckHandler.DeckReadError: Deck.ID[%v] Error[%v]", deckID, err)
 			http.NotFound(w, r)
 			//http.Error(w, err.Error(), http.StatusInternalServerError)
-			return
+			return err
 		}
 		log.Debugf("QueryDeckHandler.GotDeck: Deck.ID[%v] Hydrate[%s]", deckID, hydrate)
 		w.Header().Set("Content-Type", "application/json; charset=utf-8")
@@ -613,15 +581,15 @@ func (h *QueryDeckHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			order = "d.name"
 		}
 		deck := &data.Deck{
-			IDPlayer:    h.GetPlayer().ID,
-			IDInventory: h.GetPlayer().IDInventory,
+			IDPlayer:    player.ID,
+			IDInventory: player.IDInventory,
 		}
 		decks, err := deck.Query(queryRestrinctions, order)
 		if err != nil {
 			log.Errorf("QueryDeckHandler.DeckReadError: Deck.ID[%v] Error[%v]", deckID, err)
 			http.NotFound(w, r)
 			//http.Error(w, err.Error(), http.StatusInternalServerError)
-			return
+			return err
 		}
 		decksSize := len(decks)
 		log.Debugf("QueryDeckHandler.QueryDecks: Decks.Len[%v] Hydrate[%s]", decksSize, hydrate)
@@ -636,18 +604,10 @@ func (h *QueryDeckHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			log.Debugf("QueryDeckHandler.JsonWritten: Deck.ID[%v] Bytes[%v]", deckID, bytesWritten)
 		}
 	}
+	return nil
 }
 
-//DeleteDeckHandler is the handler to get Decks
-type DeleteDeckHandler struct {
-	security.InjectedPlayerHandler
-}
-
-func (h DeleteDeckHandler) HandleRequest(ctx *fasthttp.RequestCtx) {
-
-}
-
-func (h *DeleteDeckHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+func (h DeckHandler) Delete(player *data.Player, w http.ResponseWriter, r *http.Request) error {
 	urlPathParameters := strings.Split(r.URL.Path, "/")
 	queryParameters := r.URL.Query()
 	log.Infof("DeleteDeckHandler: URL[%q] PathParameters[%q] QueryParameters[%q]", r.URL.Path, urlPathParameters, queryParameters)
@@ -655,7 +615,7 @@ func (h *DeleteDeckHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	deckID := urlPathParameters[2]
 	if deckID == "" {
 		http.NotFound(w, r)
-		return
+		return errors.New(http.StatusText(http.StatusNotFound))
 	}
 	deck := &data.Deck{}
 	var convertIDErr error
@@ -664,15 +624,106 @@ func (h *DeleteDeckHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		log.Errorf("DeleteDeckHandler.DeckDeleteError: Deck.ID[%v] Error[%v]", deckID, convertIDErr)
 		http.NotFound(w, r)
 		//http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
+		return errors.New(http.StatusText(http.StatusNotFound))
 	}
 	if err := deck.Delete(); err != nil {
 		log.Errorf("DeleteDeckHandler.DeckDeleteError: Deck.ID[%v] Error[%v]", deckID, err)
 		http.NotFound(w, r)
 		//http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
+		return errors.New(http.StatusText(http.StatusNotFound))
 	}
 	log.Debugf("DeleteDeckHandler.DeletedDeck: Deck.ID[%v]", deckID)
 	w.Header().Set("Content-Type", "application/json; charset=utf-8")
 	w.WriteHeader(http.StatusOK)
+	return nil
+}
+
+//NewAnonDeckHandler creates a new unauthorized deckHandler instance
+func NewAnonDeckHandler() http.HandlerFunc {
+	var deckHandler AnonDeckHandler
+	return haki.Handler(haki.Log(haki.Error(deckHandler.ServeHTTP)))
+}
+
+//AnonDeckHandler is the unsecure handler to get and post Decks
+type AnonDeckHandler struct{}
+
+func (h AnonDeckHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) error {
+	if r.Method == "GET" {
+		isQuery := path.Base(path.Dir(r.URL.Path)) == "query"
+		if isQuery {
+			return h.QueryByName(w, r)
+		}
+		return h.Read(w, r)
+	} else if r.Method == "POST" {
+		return h.Persist(w, r)
+	}
+	return haki.Status(w, http.StatusMethodNotAllowed)
+}
+
+func (h AnonDeckHandler) Persist(w http.ResponseWriter, r *http.Request) error {
+	queryParameters := r.URL.Query()
+	log.Infof("PostDeckdHandler: URI[%q] Parameters[%q]", r.URL.Path, queryParameters)
+
+	var err error
+	var deck data.Deck
+	if err = haki.ReadJSON(r, &deck); err != nil {
+		return haki.Err(w, err)
+	}
+	isCreateRequest := deck.ID == 0
+	if err = raizel.Execute(deck.PersistV2); err != nil {
+		return haki.Err(w, err)
+	}
+	if isCreateRequest {
+		if err = haki.Status(w, http.StatusCreated); err != nil {
+			return err
+		}
+		io.WriteString(w, strconv.Itoa(deck.ID))
+	}
+	return haki.Status(w, http.StatusAccepted)
+}
+
+func (h AnonDeckHandler) Read(w http.ResponseWriter, r *http.Request) error {
+	readParameter := path.Base(r.URL.Path)
+	queryParameters := r.URL.Query()
+	l.Infof("AnonDeckHandler.Read: URI[%q] ReadParameter[%q] Parameters[%q]", r.URL.Path, readParameter, queryParameters)
+
+	var deck data.Deck
+	var err error
+	if id, atoirErr := strconv.Atoi(readParameter); atoirErr == nil {
+		deck.ID = id
+		err = raizel.Execute(deck.ReadByID)
+	} else {
+		deck.Name = readParameter
+		err = raizel.Execute(deck.ReadByName)
+	}
+	if err != nil {
+		return haki.Err(w, err)
+	}
+	return haki.JSON(w, http.StatusOK, deck)
+}
+
+func (h AnonDeckHandler) QueryByName(w http.ResponseWriter, r *http.Request) error {
+	queryName := path.Base(r.URL.Path)
+	queryParameters := r.URL.Query()
+	l.Infof("AnonDeckHandler.QueryByName: URI[%q] Query[%s] Parameters[%q]", r.URL.Path, queryName, queryParameters)
+
+	if queryName == "" {
+		return haki.Status(w, http.StatusOK)
+	}
+
+	var decks []data.Deck
+	err := raizel.Execute(
+		func(c raizel.Client) error {
+			queryDeck := data.Deck{Name: queryName}
+			tmp, err := queryDeck.QueryByName(c)
+			if err == nil {
+				decks = tmp
+			}
+			return err
+		},
+	)
+	if err != nil {
+		return haki.Err(w, err)
+	}
+	return haki.JSON(w, http.StatusOK, decks)
 }

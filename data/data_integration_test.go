@@ -5,11 +5,15 @@ import (
 	"io/ioutil"
 	"log"
 	"os"
+	"time"
 	//"errors"
 	"testing"
 
 	"farm.e-pedion.com/repo/fivecolors/config"
 	"farm.e-pedion.com/repo/fivecolors/data"
+	l "farm.e-pedion.com/repo/logger"
+	raizel "farm.e-pedion.com/repo/persistence"
+	raizelSQL "farm.e-pedion.com/repo/persistence/sql"
 	_ "github.com/go-sql-driver/mysql"
 	"github.com/stretchr/testify/assert"
 )
@@ -20,15 +24,33 @@ var (
 	fullDeck         *data.Deck
 	minimalInventory *data.Inventory
 	fullInventory    *data.Inventory
+	deckByID         *data.Deck
 )
 
+func init() {
+	l.Setup(new(l.Configuration))
+}
+
 func setup() error {
-	setupErr := data.Setup(&config.DBConfig{
-		Driver:   "mysql",
-		URL:      "tcp(127.0.0.1:3306)/fivecolors",
-		Username: "fivecolors",
-		Password: "fivecolors",
-	})
+	setupErr := data.Setup(
+		config.DBConfig{
+			Driver:   "mysql",
+			URL:      "tcp(127.0.0.1:3306)/fivecolors",
+			Username: "fivecolors",
+			Password: "fivecolors",
+		},
+	)
+
+	setupErr = raizelSQL.Setup(
+		&raizelSQL.Configuration{
+			Driver:    "mysql",
+			URL:       "tcp(127.0.0.1:3306)/fivecolors",
+			Username:  "fivecolors",
+			Password:  "fivecolors",
+			NumConns:  10,
+			KeepAlive: 3 * time.Minute,
+		},
+	)
 	if setupErr != nil {
 		setted = true
 	}
@@ -52,6 +74,7 @@ func Test_CardRead(t *testing.T) {
 	log.Println("Test_CardRead")
 	card := &data.Card{}
 	card.ID = 1
+	card.InventoryCard.IDInventory = 1
 	readErr := card.Read()
 	assert.Nil(t, readErr)
 	assert.Equal(t, card.ID, 1)
@@ -72,7 +95,11 @@ func Test_CardQuery(t *testing.T) {
 	log.Println("Test_CardQuery")
 	cardParameter := make(map[string]interface{}, 2)
 	cardParameter["c.id_expansion = ?"] = 19
-	card := data.Card{}
+	card := data.Card{
+		InventoryCard: data.InventoryCard{
+			IDInventory: 1,
+		},
+	}
 	cards, readErr := card.Query(cardParameter, "")
 	assert.Nil(t, readErr)
 	assert.NotNil(t, cards)
@@ -160,6 +187,7 @@ func Test_InventoryMinimalCreate(t *testing.T) {
 	log.Println("Test_InventoryMinimalCreate")
 	inventory := &data.Inventory{}
 	inventory.Name = "Test_InventoryMinimalCreate"
+	inventory.IDPlayer = 1
 	createErr := inventory.Persist()
 	assert.Nil(t, createErr)
 	assert.NotEqual(t, inventory.ID, 0)
@@ -173,6 +201,7 @@ func Test_InventoryMinimalCreatedRead(t *testing.T) {
 	log.Println("Test_InventoryMinimalCreatedRead")
 	inventory := &data.Inventory{}
 	inventory.ID = minimalInventory.ID
+	inventory.IDPlayer = 1
 	readErr := inventory.Read()
 	assert.Nil(t, readErr)
 	assert.Equal(t, inventory.ID, minimalInventory.ID)
@@ -186,6 +215,7 @@ func Test_InventoryMinimalUpdate(t *testing.T) {
 	log.Println("Test_InventoryMinimalUpdate")
 	inventory := &data.Inventory{}
 	inventory.ID = minimalInventory.ID
+	inventory.IDPlayer = 1
 	inventory.Name = "Test_InventoryMinimalUpdate"
 	createErr := inventory.Persist()
 	assert.Nil(t, createErr)
@@ -199,6 +229,7 @@ func Test_InventoryMinimalUpdatedRead(t *testing.T) {
 	log.Println("Test_InventoryMinimalUpdatedRead")
 	inventory := &data.Inventory{}
 	inventory.ID = minimalInventory.ID
+	inventory.IDPlayer = 1
 	readErr := inventory.Read()
 	assert.Nil(t, readErr)
 	assert.Equal(t, inventory.ID, minimalInventory.ID)
@@ -212,6 +243,7 @@ func Test_InventoryMinimalDelete(t *testing.T) {
 	log.Println("Test_InventoryDelete")
 	inventory := &data.Inventory{}
 	inventory.ID = minimalInventory.ID
+	inventory.IDPlayer = 1
 	deleteErr := inventory.Delete()
 	assert.Nil(t, deleteErr)
 	readErr := inventory.Read()
@@ -227,6 +259,7 @@ func Test_InventoryCreate(t *testing.T) {
 	}
 	log.Println("Test_InventoryCreate")
 	inventory := &data.Inventory{}
+	inventory.IDPlayer = 1
 	inventory.Name = "Test_InventoryCreate"
 	inventory.Cards = []data.Card{
 		data.Card{ID: 1, InventoryCard: data.InventoryCard{Quantity: 2}},
@@ -248,6 +281,7 @@ func Test_InventoryCreatedRead(t *testing.T) {
 	log.Println("Test_InventoryCreatedRead")
 	inventory := &data.Inventory{}
 	inventory.ID = fullInventory.ID
+	inventory.IDPlayer = 1
 	readErr := inventory.Read()
 	assert.Nil(t, readErr)
 	assert.Equal(t, inventory.ID, fullInventory.ID)
@@ -273,6 +307,7 @@ func Test_InventoryUpdate(t *testing.T) {
 	log.Println("Test_InventoryUpdate")
 	inventory := &data.Inventory{}
 	inventory.ID = fullInventory.ID
+	inventory.IDPlayer = 1
 	inventory.Name = "Test_InventoryUpdate"
 	inventory.Cards = []data.Card{
 		//Mock old cards inventory never removes a inserted cards, but change his quantity
@@ -299,6 +334,7 @@ func Test_InventoryUpdatedRead(t *testing.T) {
 	log.Println("Test_InventoryUpdatedRead")
 	inventory := &data.Inventory{}
 	inventory.ID = fullInventory.ID
+	inventory.IDPlayer = 1
 	readErr := inventory.Read()
 	assert.Nil(t, readErr)
 	assert.Equal(t, inventory.ID, fullInventory.ID)
@@ -322,6 +358,7 @@ func Test_InventoryDelete(t *testing.T) {
 	log.Println("Test_InventoryDelete")
 	inventory := &data.Inventory{}
 	inventory.ID = fullInventory.ID
+	inventory.IDPlayer = 1
 	deleteErr := inventory.Delete()
 	assert.Nil(t, deleteErr)
 	readErr := inventory.Read()
@@ -339,6 +376,7 @@ func Test_DeckMinimalCreate(t *testing.T) {
 	}
 	log.Println("Test_DeckMinimalCreate")
 	deck := &data.Deck{}
+	deck.IDPlayer = 1
 	deck.Name = "Test_DeckMinimalCreate"
 	createErr := deck.Persist()
 	assert.Nil(t, createErr)
@@ -353,6 +391,8 @@ func Test_DeckMinialCreatedRead(t *testing.T) {
 	log.Println("Test_DeckMinialCreatedRead")
 	deck := &data.Deck{}
 	deck.ID = minimalDeck.ID
+	deck.IDPlayer = 1
+	deck.IDInventory = 1
 	readErr := deck.Read()
 	assert.Nil(t, readErr)
 }
@@ -364,6 +404,7 @@ func Test_DeckMinimalUpdate(t *testing.T) {
 	log.Println("Test_DeckMinimalUpdate")
 	deck := &data.Deck{}
 	deck.ID = minimalDeck.ID
+	deck.IDPlayer = 1
 	deck.Name = "Test_DeckMinimalUpdate"
 	createErr := deck.Persist()
 	assert.Nil(t, createErr)
@@ -377,6 +418,8 @@ func Test_DeckMinimalUpdatedRead(t *testing.T) {
 	log.Println("Test_DeckMinimalUpdatedRead")
 	deck := &data.Deck{}
 	deck.ID = minimalDeck.ID
+	deck.IDPlayer = 1
+	deck.IDInventory = 1
 	readErr := deck.Read()
 	assert.Nil(t, readErr)
 	assert.Equal(t, deck.ID, minimalDeck.ID)
@@ -390,6 +433,7 @@ func Test_DeckMinialDelete(t *testing.T) {
 	log.Println("Test_DeckMinialDelete")
 	deck := &data.Deck{}
 	deck.ID = minimalDeck.ID
+	deck.IDPlayer = 1
 	deleteErr := deck.Delete()
 	assert.Nil(t, deleteErr)
 	readErr := deck.Read()
@@ -406,6 +450,7 @@ func Test_DeckCreate(t *testing.T) {
 	log.Println("Test_DeckCreate")
 	deck := &data.Deck{}
 	deck.Name = "Test_DeckCreate"
+	deck.IDPlayer = 1
 	deck.Cards = []data.Card{
 		data.Card{ID: 1, DeckCard: data.DeckCard{IDBoard: data.MainBoard, Quantity: 2}},
 		data.Card{ID: 2, DeckCard: data.DeckCard{IDBoard: data.MainBoard, Quantity: 4}},
@@ -427,6 +472,8 @@ func Test_DeckCreatedRead(t *testing.T) {
 	log.Printf("Test_DeckCreatedRead: MainBoard=%v SideBoard=%v", data.MainBoard, data.SideBoard)
 	deck := &data.Deck{}
 	deck.ID = fullDeck.ID
+	deck.IDPlayer = 1
+	deck.IDInventory = 1
 	readErr := deck.Read()
 	assert.Nil(t, readErr)
 	assert.Equal(t, deck.ID, fullDeck.ID)
@@ -451,6 +498,7 @@ func Test_DeckUpdate(t *testing.T) {
 	log.Println("Test_DeckUpdate")
 	deck := &data.Deck{}
 	deck.ID = fullDeck.ID
+	deck.IDPlayer = 1
 	deck.Name = "Test_DeckUpdate"
 	deck.Cards = []data.Card{
 		data.Card{ID: 1, DeckCard: data.DeckCard{IDBoard: data.MainBoard, Quantity: 2}},
@@ -474,6 +522,8 @@ func Test_DeckUpdatedRead(t *testing.T) {
 	log.Println("Test_DeckUpdatedRead")
 	deck := &data.Deck{}
 	deck.ID = fullDeck.ID
+	deck.IDPlayer = 1
+	deck.IDInventory = 1
 	readErr := deck.Read()
 	assert.Nil(t, readErr)
 	assert.Equal(t, deck.ID, fullDeck.ID)
@@ -499,6 +549,8 @@ func Test_DeckList(t *testing.T) {
 	deckNameParameter := make(map[string]interface{}, 1)
 	deckNameParameter["d.name regexp ?"] = "Test.*"
 	deck := &data.Deck{}
+	deck.IDPlayer = 1
+	deck.IDInventory = 1
 	decks, readErr := deck.Query(deckNameParameter, "d.name")
 	assert.Nil(t, readErr)
 	assert.NotNil(t, decks)
@@ -527,11 +579,102 @@ func Test_DeckDelete(t *testing.T) {
 	log.Println("Test_DeckDelete")
 	deck := &data.Deck{}
 	deck.ID = fullDeck.ID
+	deck.IDPlayer = 1
 	deleteErr := deck.Delete()
 	assert.Nil(t, deleteErr)
 	readErr := deck.Read()
 	assert.NotNil(t, readErr)
 }
 
-//Deck Full
-//Deck
+//New persistence library
+// func Test_DeckCreateByID(t *testing.T) {
+// 	if beforeErr := before(); beforeErr != nil {
+// 		assert.Fail(t, beforeErr.Error())
+// 	}
+// 	log.Println("Test_DeckCreateByID")
+// 	deck := &data.Deck{}
+// 	deck.Name = "Test_DeckCreateByID"
+// 	//Anonymous
+// 	deck.IDPlayer = 0
+// 	deck.IDInventory = 0
+// 	deck.Cards = []data.Card{
+// 		data.Card{ID: 1, DeckCard: data.DeckCard{IDBoard: data.MainBoard, Quantity: 2}},
+// 		data.Card{ID: 2, DeckCard: data.DeckCard{IDBoard: data.MainBoard, Quantity: 4}},
+// 		data.Card{ID: 3, DeckCard: data.DeckCard{IDBoard: data.MainBoard, Quantity: 10}},
+// 		data.Card{ID: 4, DeckCard: data.DeckCard{IDBoard: data.MainBoard, Quantity: 3}},
+// 		data.Card{ID: 501, DeckCard: data.DeckCard{IDBoard: data.SideBoard, Quantity: 5}},
+// 		data.Card{ID: 502, DeckCard: data.DeckCard{IDBoard: data.SideBoard, Quantity: 27}},
+// 	}
+// 	createErr := raizel.Execute(deck.Persist)
+// 	assert.Nil(t, createErr)
+// 	assert.NotEqual(t, deck.ID, 0)
+// 	deckByID = deck
+// }
+
+func Test_DeckReadByID(t *testing.T) {
+	if beforeErr := before(); beforeErr != nil {
+		assert.Fail(t, beforeErr.Error())
+	}
+	log.Printf("Test_DeckReadByID: MainBoard=%v SideBoard=%v", data.MainBoard, data.SideBoard)
+	var deck data.Deck
+	deck.ID = 1
+	readErr := raizel.Execute(deck.ReadByID)
+	assert.Nil(t, readErr)
+	assert.NotZero(t, deck.ID)
+	assert.NotZero(t, deck.Name)
+
+	assert.True(t, len(deck.Cards) > 0, "Zero deck cards")
+	for _, deckMainCard := range deck.Cards {
+		assert.NotZero(t, deckMainCard.ID, "Deck.ID is zero")
+		assert.NotZero(t, deckMainCard.DeckCard.IDDeck, "Deck.DeckCard.IDDeck is zero")
+		assert.NotZero(t, deckMainCard.DeckCard.IDBoard, "Deck.DeckCard.IDBoard is zero")
+	}
+}
+
+func Test_DeckReadByName(t *testing.T) {
+	if beforeErr := before(); beforeErr != nil {
+		assert.Fail(t, beforeErr.Error())
+	}
+	log.Printf("Test_DeckReadByName: MainBoard=%v SideBoard=%v", data.MainBoard, data.SideBoard)
+	var deck data.Deck
+	deck.Name = "Vampire Modern"
+	readErr := raizel.Execute(deck.ReadByName)
+	assert.Nil(t, readErr)
+	assert.NotZero(t, deck.ID)
+	assert.NotZero(t, deck.Name)
+
+	assert.True(t, len(deck.Cards) > 0, "Zero deck cards")
+	for _, deckMainCard := range deck.Cards {
+		assert.NotZero(t, deckMainCard.ID, "Deck.ID is zero")
+		assert.NotZero(t, deckMainCard.DeckCard.IDDeck, "Deck.DeckCard.IDDeck is zero")
+		assert.NotZero(t, deckMainCard.DeckCard.IDBoard, "Deck.DeckCard.IDBoard is zero")
+	}
+}
+
+func Test_QueryByName(t *testing.T) {
+	if beforeErr := before(); beforeErr != nil {
+		assert.Fail(t, beforeErr.Error())
+	}
+	log.Printf("Test_QueryByName: MainBoard=%v SideBoard=%v", data.MainBoard, data.SideBoard)
+	var queryDeck data.Deck
+	queryDeck.Name = "gu"
+	var decks []data.Deck
+	readErr := raizel.Execute(
+		func(c raizel.Client) error {
+			tmp, err := queryDeck.QueryByName(c)
+			if err == nil {
+				decks = tmp
+				l.Infof("TestDecks=%+v", decks)
+			}
+			return err
+		},
+	)
+	assert.Nil(t, readErr)
+	assert.NotEmpty(t, decks)
+
+	assert.True(t, len(decks) > 0, "Any deck was found, len=%d", len(decks))
+	for _, deck := range decks {
+		assert.NotZero(t, deck.ID, "Deck.ID is zero")
+		assert.NotZero(t, deck.Name, "Deck.DeckCard.IDDeck is zero")
+	}
+}

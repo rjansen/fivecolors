@@ -2,6 +2,7 @@ package config
 
 import (
 	"farm.e-pedion.com/repo/logger"
+	raizelSQL "farm.e-pedion.com/repo/persistence/sql"
 	"farm.e-pedion.com/repo/security/identity"
 	"flag"
 	"fmt"
@@ -40,22 +41,24 @@ func Setup() error {
 
 //Configuration holds all possible configurations structs
 type Configuration struct {
-	Version     string                 `mapstructure:"version"`
-	Environment string                 `mapstructure:"environment"`
-	DB          DBConfig               `mapstructure:"db"`
-	Handler     HandlerConfig          `mapstructure:"handler"`
-	Logger      logger.Configuration   `mapstructure:"logger"`
-	Identity    identity.Configuration `mapstructure:"identity"`
+	Version     string                  `mapstructure:"version"`
+	Environment string                  `mapstructure:"environment"`
+	DB          DBConfig                `mapstructure:"db"`
+	Handler     HandlerConfig           `mapstructure:"handler"`
+	Logger      logger.Configuration    `mapstructure:"logger"`
+	Identity    identity.Configuration  `mapstructure:"identity"`
+	Raizel      raizelSQL.Configuration `mapstructure:"persistence"`
 }
 
 func (c Configuration) String() string {
 	//return fmt.Sprintf("Configuration[Version=%v ProxyConfig=%v DBConfig=%v SecurityConfig=%v CacheConfig=%v LoggerConfig=%v]", c.Version, c.ProxyConfig, c.DBConfig, c.SecurityConfig, c.CacheConfig, c.LoggerConfig)
-	return fmt.Sprintf("Configuration Version=%s Environment=%s Logger=%s Handler=%s DB=%s Identity=%s",
+	return fmt.Sprintf("Configuration Version=%s Environment=%s Logger=%s Handler=%s DB=%s Identity=%s Raizel=%s",
 		c.Version, c.Environment,
 		c.Logger.String(),
 		c.Handler.String(),
 		c.DB.String(),
 		c.Identity.String(),
+		c.Raizel.String(),
 	)
 }
 

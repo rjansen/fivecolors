@@ -8,6 +8,7 @@ import (
 	"farm.e-pedion.com/repo/fivecolors/data"
 	"farm.e-pedion.com/repo/fivecolors/security"
 	"farm.e-pedion.com/repo/logger"
+	raizelSQL "farm.e-pedion.com/repo/persistence/sql"
 	"farm.e-pedion.com/repo/security/identity"
 	_ "github.com/go-sql-driver/mysql"
 )
@@ -31,6 +32,10 @@ func main() {
 	}
 	defer data.Close()
 
+	if err = raizelSQL.Setup(&configuration.Raizel); err != nil {
+		log.Panic("FivecolorsSetupError", logger.Err(err))
+	}
+
 	if err = identity.Setup(&configuration.Identity); err != nil {
 		log.Panic("IdentitySetupError", logger.Err(err))
 	}
@@ -46,6 +51,7 @@ func main() {
 	http.Handle("/asset/", api.NewGetAssetHandler())
 	http.Handle("/inventory/", api.NewInventoryHandler())
 	http.Handle("/deck/", api.NewDeckHandler())
+	http.HandleFunc("/api/deck/", api.NewAnonDeckHandler())
 
 	log.Info("FivecolorsStart",
 		logger.String("Version", configuration.Version),

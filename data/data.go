@@ -10,6 +10,7 @@ import (
 	"strings"
 
 	"farm.e-pedion.com/repo/logger"
+	raizel "farm.e-pedion.com/repo/persistence"
 	"farm.e-pedion.com/repo/security/identity"
 )
 
@@ -159,6 +160,15 @@ func (c *Card) FetchWithDeckCard(fetchable Fetchable) error {
 		&c.Expansion.ID, &c.Expansion.Name, &c.Expansion.Label, &c.Expansion.IDAsset)
 }
 
+func (c *Card) FetchByIDWithDeckCard(fetchable raizel.Fetchable) error {
+	return fetchable.Scan(&c.ID, &c.Index, &c.Name, &c.Label, &c.Text,
+		&c.ManacostLabel, &c.CombatpowerLabel, &c.TypeLabel,
+		&c.IDRarity, &c.Flavor, &c.Artist,
+		&c.Rate, &c.RateVotes, &c.IDAsset,
+		&c.DeckCard.IDDeck, &c.DeckCard.IDBoard, &c.DeckCard.Quantity,
+		&c.Expansion.ID, &c.Expansion.Name, &c.Expansion.IDAsset)
+}
+
 //Read gets the entity representation from the database.
 //Card.ID must not empty to perform a Read operation
 func (c *Card) Read() error {
@@ -183,7 +193,7 @@ func (c *Card) Read() error {
         from card c
             left join expansion e on c.id_expansion = e.id
             left join expansion_asset a on a.id_expansion = e.id and a.id_rarity = c.id_rarity
-            left join inventory_card i on i.id_inventory = ? nad i.id_card = c.id
+            left join inventory_card i on i.id_inventory = ? and i.id_card = c.id
         where c.id = ?`
 	row := c.db.QueryRow(query, c.InventoryCard.IDInventory, c.ID, c.InventoryCard.IDInventory)
 	return c.Fetch(row)
@@ -843,9 +853,9 @@ func (i *Inventory) Unmarshal(reader io.Reader) error {
 type Deck struct {
 	ID          int    `json:"id"`
 	Name        string `json:"name"`
-	IDPlayer    int    `json:"idPlayer"`
-	IDInventory int    `json:"idInventory"`
-	Cards       []Card `json:"cards"`
+	IDPlayer    int    `json:"idPlayer,omitempty"`
+	IDInventory int    `json:"idInventory,omitempty"`
+	Cards       []Card `json:"cards,omitempty"`
 
 	//db is a transient pointer to database connection
 	db *sql.DB
@@ -1053,6 +1063,177 @@ func (d *Deck) ReadCards(page int) error {
 	}
 	d.Cards = tempCards
 	return nil
+}
+
+//FetchByID fetchs the Row and sets the values into Deck instance
+func (d *Deck) FetchByID(fetchable raizel.Fetchable) error {
+	return fetchable.Scan(&d.ID, &d.Name, &d.IDPlayer)
+}
+
+func (d *Deck) PersistV2(client raizel.Client) error {
+	return errors.New("NotImplementedErr")
+}
+
+//Persist persists the DECK record with Deck attributes values
+// func (d *Deck) PersistV2(client raizel.Client) error {
+// 	if d.Name == "" {
+// 		return errors.New("data.Deck.PersistError: Message='Deck.Name is empty'")
+// 	}
+// 	if d.IDPlayer <= 0 {
+// 		return errors.New("data.Deck.PersistError: Message='Deck.IDPlayer is empty'")
+// 	}
+
+// 	if d.ID == 0 {
+// 		createResult, createErr := client.Exec("insert into deck (name, id_player) values (?, ?)", d.Name, d.IDPlayer)
+// 		if createErr != nil {
+// 			return createErr
+// 		}
+// 		createdID, lastIDErr := createResult.LastInsertId()
+// 		if lastIDErr != nil {
+// 			return lastIDErr
+// 		}
+// 		log.Debugf("Deck.PersistNewDeck: ID=%v IDPlayer=%v Name='%v'", createdID, d.IDPlayer, d.Name)
+// 		d.ID = int(createdID)
+// 	} else {
+// 		updateResult, updateErr := client.Exec("update deck set name = ? where id = ? and id_player = ?", d.Name, d.ID, d.IDPlayer)
+// 		if updateErr != nil {
+// 			return updateErr
+// 		}
+// 		rowsUpdated, err := updateResult.RowsAffected()
+// 		if err != nil {
+// 			log.Errorf("Deck.UpdateGetRowsAffectedEx: Message='%v'", err.Error())
+// 		} else {
+// 			if rowsUpdated != 1 {
+// 				log.Errorf("data.Deck.UpdateMultipleEx: Message='%d Records was update for Deck.ID=%d Deck.IDPlayer=%d'", rowsUpdated, d.ID, d.IDPlayer)
+// 			}
+// 		}
+// 		log.Debugf("data.Deck.PersistOldDeck: ID=%v IDPlayer=%v Name='%v'", d.ID, d.IDPlayer, d.Name)
+// 	}
+
+// 	if _, deleteErr := d.db.Exec("delete from deck_card where id_deck = ?", d.ID); deleteErr != nil {
+// 		return deleteErr
+// 	}
+
+// 	insertCardQuery :=
+// 		`insert into deck_card (id_deck, id_card, id_board, quantity)
+//         values (?, ?, ?, ?)`
+// 	updateCardQuery :=
+// 		`update deck_card
+//             set quantity = ?
+//         where id_deck = ? and id_card = ? and id_board = ?`
+
+// 	for _, card := range d.Cards {
+// 		_, insertErr := d.db.Exec(insertCardQuery, d.ID, card.ID, card.DeckCard.IDBoard, card.DeckCard.Quantity)
+// 		if insertErr != nil {
+// 			log.Errorf("Deck.InsertCardEx: Message='%v'", insertErr.Error())
+// 			if !primaryKeyViolation.MatchString(insertErr.Error()) {
+// 				return insertErr
+// 			}
+// 			updateResult, updateErr := d.db.Exec(updateCardQuery, card.DeckCard.Quantity, d.ID, card.ID, card.DeckCard.IDBoard)
+// 			if updateErr != nil {
+// 				return updateErr
+// 			}
+// 			rowsUpdated, err := updateResult.RowsAffected()
+// 			if err != nil {
+// 				log.Errorf("Deck.UpdateGetRowsAffectedEx: Message='%v'", err.Error())
+// 			} else {
+// 				if rowsUpdated != 1 {
+// 					log.Errorf("Deck.UpdateMultipleEx: Message='%d Records was update for Inventory.ID=%d'", rowsUpdated, d.ID)
+// 				}
+// 			}
+// 		}
+// 	}
+// 	log.Infof("Deck.Persisted: ID=%v IDPlayer=%v", d.ID, d.IDPlayer)
+// 	return nil
+// }
+
+func (d *Deck) ReadByID(client raizel.Client) error {
+	if d.ID <= 0 {
+		return errors.New("data.Asset.ReadByIDError: Message='Deck.ID is empty'")
+	}
+	err := client.QueryOne("select d.id, d.name, d.id_player from deck d where d.id = ?", d.FetchByID, d.ID)
+	if err != nil {
+		return err
+	}
+	//Read Fully
+	return d.ReadCardsByID(client, -1)
+}
+
+func (d *Deck) ReadByName(client raizel.Client) error {
+	if strings.TrimSpace(d.Name) == "" {
+		return errors.New("data.Deck.ReadByNameErr: Message='Deck.Name is empty'")
+	}
+	err := client.QueryOne("select d.id, d.name, d.id_player from deck d where d.name = ?", d.FetchByID, d.Name)
+	if err != nil {
+		return err
+	}
+	//Read Fully
+	return d.ReadCardsByID(client, -1)
+}
+
+func (d *Deck) ReadCardsByID(client raizel.Client, page int) error {
+	if d.ID <= 0 {
+		return errors.New("data.Deck.ReadCardsRaizelErr: Message='Deck.ID is empty'")
+	}
+	query :=
+		`select c.id, c.multiverse_number, c.name, c.label, coalesce(c.text, ''),
+            coalesce(c.manacost_label, ''), coalesce(c.combatpower_label, ''), c.type_label,
+            c.id_rarity, coalesce(c.flavor, ''), c.artist,
+            c.rate, c.rate_votes, c.id_asset,
+            d.id_deck, d.id_board, coalesce(d.quantity, 0) as deck_quantity,
+            e.id, e.name, a.id_asset
+        from card c
+            left join expansion e on c.id_expansion = e.id
+            left join expansion_asset a on a.id_expansion = e.id and a.id_rarity = c.id_rarity
+            left join deck_card d on d.id_card = c.id
+        where d.id_deck = ? 
+        order by d.id_board, c.type_label, e.name, abs(c.multiverse_number)`
+
+	//tempCards := make([]Card, selectLimit)
+	var tempCards []Card
+	cardsFetchFunc := func(i raizel.Iterable) error {
+		for i.Next() {
+			nextCard := Card{}
+			if err := nextCard.FetchByIDWithDeckCard(i); err != nil {
+				return err
+			}
+			tempCards = append(tempCards, nextCard)
+		}
+		return nil
+	}
+
+	readCardsErr := client.Query(query, cardsFetchFunc, d.ID)
+	if readCardsErr != nil {
+		return readCardsErr
+	}
+	if tempCards == nil {
+		tempCards = make([]Card, 0)
+	}
+	d.Cards = tempCards
+	return nil
+}
+
+func (d *Deck) QueryByName(client raizel.Client) ([]Deck, error) {
+	if strings.TrimSpace(d.Name) == "" {
+		return nil, errors.New("data.Deck.QueryByNameErr: Message='Deck.Name is empty'")
+	}
+	var resultDecks []Deck
+	iterFunc := func(i raizel.Iterable) error {
+		for i.Next() {
+			var deck Deck
+			if fetchErr := deck.FetchByID(i); fetchErr != nil {
+				return fetchErr
+			}
+			resultDecks = append(resultDecks, deck)
+		}
+		return nil
+	}
+	err := client.Query("select d.id, d.name, d.id_player from deck d where d.name regexp ?", iterFunc, d.Name)
+	if err != nil {
+		return nil, err
+	}
+	logger.Infof("ResultDecks=%+v", resultDecks)
+	return resultDecks, nil
 }
 
 //Query querys DECKs by restrictions and create a list of Decks references

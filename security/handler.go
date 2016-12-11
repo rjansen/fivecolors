@@ -91,7 +91,7 @@ func (h *IdentityHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 	session.Data = player.SessionData()
 
-	w.Header().Set("Content-Type", "application/json; charset=utf-8")
+	w.Header().Set("Content-Type", "application/octet-stream")
 	w.WriteHeader(http.StatusOK)
 
 	jwtBytes, err := identity.Serialize(*session)

@@ -5,14 +5,17 @@ import (
 	"fmt"
 	"strconv"
 	"testing"
+	"time"
 	//"errors"
 	"net/http"
 	"net/http/httptest"
 
-	"farm.e-pedion.com/repo/config"
+	"farm.e-pedion.com/repo/fivecolors/config"
 	"farm.e-pedion.com/repo/fivecolors/data"
+	l "farm.e-pedion.com/repo/logger"
 
 	"farm.e-pedion.com/repo/fivecolors/api"
+	raizelSQL "farm.e-pedion.com/repo/persistence/sql"
 	_ "github.com/go-sql-driver/mysql"
 	"github.com/stretchr/testify/assert"
 )
@@ -24,13 +27,29 @@ var (
 	inventoryID string
 )
 
+func init() {
+	l.Setup(new(l.Configuration))
+}
+
 func setup() error {
-	setupErr := data.Setup(&config.DBConfig{
-		Driver:   "mysql",
-		URL:      "tcp(127.0.0.1:3306)/fivecolors",
-		Username: "fivecolors",
-		Password: "fivecolors",
-	})
+	setupErr := data.Setup(
+		config.DBConfig{
+			Driver:   "mysql",
+			URL:      "tcp(127.0.0.1:3306)/fivecolors",
+			Username: "fivecolors",
+			Password: "fivecolors",
+		},
+	)
+	setupErr = raizelSQL.Setup(
+		&raizelSQL.Configuration{
+			Driver:    "mysql",
+			URL:       "tcp(127.0.0.1:3306)/fivecolors",
+			Username:  "fivecolors",
+			Password:  "fivecolors",
+			NumConns:  10,
+			KeepAlive: 1 * time.Minute,
+		},
+	)
 	if setupErr != nil {
 		setted = true
 	}
@@ -342,4 +361,83 @@ func Test_DeleteDeck(t *testing.T) {
 	assert.Equal(t, "application/json; charset=utf-8", rec.Header().Get("Content-Type"))
 	body := rec.Body.String()
 	assert.Equal(t, body, "")
+}
+
+func Test_ReadAnonDeckByID(t *testing.T) {
+	if beforeErr := before(); beforeErr != nil {
+		assert.Fail(t, beforeErr.Error())
+	}
+	readID := "1"
+	req, err := http.NewRequest("GET", "http://mockrequest.com/anon/deck/"+readID, bytes.NewBufferString(""))
+	assert.Nil(t, err)
+
+	getDeckHandler := api.NewAnonDeckHandler()
+	getDeckHandler(rec, req)
+
+	assert.Equal(t, http.StatusOK, rec.Code)
+	assert.Equal(t, "application/json", rec.Header().Get("Content-Type"))
+	assert.Contains(t, rec.Body.String(), readID)
+}
+
+func Test_ReadAnonDeckByName(t *testing.T) {
+	if beforeErr := before(); beforeErr != nil {
+		assert.Fail(t, beforeErr.Error())
+	}
+	readName := "Vampire Modern"
+	req, err := http.NewRequest("GET", "http://mockrequest.com/anon/anon/deck/"+readName, bytes.NewBufferString(""))
+	assert.Nil(t, err)
+
+	getDeckHandler := api.NewAnonDeckHandler()
+	getDeckHandler(rec, req)
+
+	assert.Equal(t, http.StatusOK, rec.Code)
+	assert.Equal(t, "application/json", rec.Header().Get("Content-Type"))
+	assert.Contains(t, rec.Body.String(), readName)
+}
+
+func Test_PostAnonDeckErr(t *testing.T) {
+	if beforeErr := before(); beforeErr != nil {
+		assert.Fail(t, beforeErr.Error())
+	}
+	deckJSON := fmt.Sprintf(`{
+        "id": %v,
+		"name": "Test_PostDeckErr",
+        "mainCards": [
+            {"id": 2764, "deckCard": {"idBoard": 1, "quantity": 4} },
+            {"id": 2884, "deckCard": {"idBoard": 1, "quantity": 4} },
+            {"id": 2791, "deckCard": {"idBoard": 1, "quantity": 2} },
+            {"id": 2863, "deckCard": {"idBoard": 1, "quantity": 1} }
+        ],
+        "sideCards": [
+            {"id": 3, "deckCard": {"idBoard": 2, "quantity": 13} },
+            {"id": 5, "deckCard": {"idBoard": 2, "quantity": 42} },
+            {"id": 1980, "deckCard": {"idBoard": 2, "quantity": 27} }
+        ]
+	}`, deckID)
+
+	req, err := http.NewRequest("POST", "http://mockrequest.com/anon/deck/", bytes.NewBufferString(deckJSON))
+	assert.Nil(t, err)
+
+	postDeckHandler := api.NewAnonDeckHandler()
+	postDeckHandler(rec, req)
+
+	assert.Equal(t, http.StatusInternalServerError, rec.Code)
+	// assert.Equal(t, "application/json; charset=utf-8", rec.Header().Get("Content-Type"))
+	assert.Empty(t, rec.Body.String())
+}
+
+func Test_QueryDeckByName(t *testing.T) {
+	if beforeErr := before(); beforeErr != nil {
+		assert.Fail(t, beforeErr.Error())
+	}
+	deckNameRx := "gu"
+	req, err := http.NewRequest("GET", "http://mockrequest.com/anon/deck/query/"+deckNameRx, bytes.NewBufferString(""))
+	assert.Nil(t, err)
+
+	getDeckHandler := api.NewAnonDeckHandler()
+	getDeckHandler(rec, req)
+
+	assert.Equal(t, http.StatusOK, rec.Code)
+	assert.Equal(t, "application/json", rec.Header().Get("Content-Type"))
+	assert.NotEmpty(t, rec.Body.String())
 }
