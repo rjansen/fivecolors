@@ -1,5 +1,4 @@
 *.bkp
 *.log
 /vendor/*/
-!/vendor/farm.e-pedion.com
 fivecolors
