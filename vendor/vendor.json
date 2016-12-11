@@ -1,11 +1,12 @@
 {
 	"comment": "",
+	"heroku": {
+		"goVersion": "go1.7",
+		"install": [
+			"./..."
+		]
+	},
 	"ignore": "test",
-	"rootPath": "farm.e-pedion.com/repo/fivecolors",
-    "heroku": {
-        "install" : [ "./..." ],
-        "goVersion": "go1.7"
-    },
 	"package": [
 		{
 			"checksumSHA1": "saRdqhwimWjSqWa1TyUQ49i9ZkU=",
@@ -357,12 +358,6 @@
 			"revisionTime": "2016-06-18T21:28:03Z"
 		},
 		{
-			"checksumSHA1": "pLlX0oRQ4IPg287m9ny70Alw6lo=",
-			"path": "github.com/vharitonsky/iniflags",
-			"revision": "743d6901e7ca8ab61ac533a8c49939ac8b560e72",
-			"revisionTime": "2016-02-10T14:50:29Z"
-		},
-		{
 			"checksumSHA1": "h+pFYiRHBogczS8/F1NoN3Ata44=",
 			"origin": "farm.e-pedion.com/repo/security/vendor/golang.org/x/crypto/curve25519",
 			"path": "golang.org/x/crypto/curve25519",
@@ -418,5 +413,6 @@
 			"revision": "4cf1213cbe33541fa4cc3fcf2265b88dd17c9e81",
 			"revisionTime": "2016-10-10T15:07:17Z"
 		}
-	]
+	],
+	"rootPath": "farm.e-pedion.com/repo/fivecolors"
 }
