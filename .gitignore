@@ -1,5 +1,5 @@
 *.bkp
 *.log
 /vendor/*/
-!/vendor/farm.e-pedion.com/**
+!/vendor/farm.e-pedion.com/repo/config/config.go
 fivecolors
