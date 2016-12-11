@@ -1,6 +1,11 @@
 {
 	"comment": "",
 	"ignore": "test",
+	"rootPath": "farm.e-pedion.com/repo/fivecolors",
+    "heroku": {
+        "install" : [ "./..." ],
+        "goVersion": "go1.7"
+    },
 	"package": [
 		{
 			"checksumSHA1": "saRdqhwimWjSqWa1TyUQ49i9ZkU=",
@@ -414,5 +419,4 @@
 			"revisionTime": "2016-10-10T15:07:17Z"
 		}
 	],
-	"rootPath": "farm.e-pedion.com/repo/fivecolors"
 }
