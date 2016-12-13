@@ -52,8 +52,12 @@ func Get() *Configuration {
 
 //Setup initializes the package
 func Setup() error {
+	// err := migi.Unmarshal(&Value)
+	// if err != nil {
+	// 	return err
+	// }
 	migi.SetEnvPrefix("")
 	migi.BindEnv("handler.port", "PORT")
-	migi.BindEnv("raizel.sql.url", "DATABASE_URL")
+	migi.BindEnv("raizel.url", "DATABASE_URL")
 	return migi.Unmarshal(&Value)
 }
