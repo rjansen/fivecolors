@@ -1213,9 +1213,6 @@ func (d *Deck) ReadCardsByID(client raizel.Client, page int) error {
 }
 
 func (d *Deck) QueryByName(client raizel.Client) ([]Deck, error) {
-	if strings.TrimSpace(d.Name) == "" {
-		return nil, errors.New("data.Deck.QueryByNameErr: Message='Deck.Name is empty'")
-	}
 	var resultDecks []Deck
 	iterFunc := func(i raizel.Iterable) error {
 		for i.Next() {
@@ -1227,7 +1224,13 @@ func (d *Deck) QueryByName(client raizel.Client) ([]Deck, error) {
 		}
 		return nil
 	}
-	err := client.Query("select d.id, d.name, d.id_player from deck d where d.name ~* $1", iterFunc, d.Name)
+	var err error
+	if strings.TrimSpace(d.Name) != "" {
+		err = client.Query("select d.id, d.name, d.id_player from deck d where d.name ~* $1", iterFunc, d.Name)
+	} else {
+		err = client.Query("select d.id, d.name, d.id_player from deck d", iterFunc)
+	}
+
 	if err != nil {
 		return nil, err
 	}
