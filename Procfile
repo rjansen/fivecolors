@@ -1,1 +1,1 @@
-web: fivecolors --cfg etc/fivecolors/fivecolors.yaml
+web: fivecolors -ecf etc/fivecolors/fivecolors.yaml
