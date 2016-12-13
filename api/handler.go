@@ -687,7 +687,7 @@ func (h AnonDeckHandler) Read(w http.ResponseWriter, r *http.Request) error {
 		err = raizel.Execute(deck.ReadByName)
 	}
 	if err != nil {
-		return haki.Err(w, err)
+		return haki.Status(w, http.StatusNotFound)
 	}
 	return haki.JSON(w, http.StatusOK, deck)
 }

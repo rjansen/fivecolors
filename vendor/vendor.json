@@ -1,7 +1,17 @@
 {
 	"comment": "",
+	"heroku": {
+		"goVersion": "go1.7",
+		"install": [
+			"."
+		]
+	},
 	"ignore": "test",
 	"package": [
+		{
+			"path": "appengine/cloudsql",
+			"revision": ""
+		},
 		{
 			"checksumSHA1": "h5Q1o+kA7VMAR5QpBzVJZbBEgC0=",
 			"origin": "github.com/rjansen/haki/vendor/github.com/Sirupsen/logrus",
@@ -107,6 +117,18 @@
 			"revisionTime": "2016-12-13T08:43:27Z"
 		},
 		{
+			"checksumSHA1": "avqi4lkviHdrNJ92cXCwrw9x870=",
+			"path": "github.com/lib/pq",
+			"revision": "4a82388ebc5138c8289fe9bc602cb0b3e32cd617",
+			"revisionTime": "2016-11-29T22:14:28Z"
+		},
+		{
+			"checksumSHA1": "xppHi82MLqVx1eyQmbhTesAEjx8=",
+			"path": "github.com/lib/pq/oid",
+			"revision": "4a82388ebc5138c8289fe9bc602cb0b3e32cd617",
+			"revisionTime": "2016-11-29T22:14:28Z"
+		},
+		{
 			"checksumSHA1": "506eXGmFfB7mgzbMcsdT/UAXJgI=",
 			"origin": "github.com/rjansen/haki/vendor/github.com/magiconair/properties",
 			"path": "github.com/magiconair/properties",
@@ -165,44 +187,44 @@
 		{
 			"checksumSHA1": "TVO7VMRY+B1MmtrwxO62y4JeYKU=",
 			"path": "github.com/rjansen/haki",
-			"revision": "6d5b30f764ea8c9a451466fbc98951d41a53ccfe",
-			"revisionTime": "2016-12-13T08:54:53Z"
+			"revision": "b3c4c79b775d5ab383a37b095780a3c70c394765",
+			"revisionTime": "2016-12-13T13:20:36Z"
 		},
 		{
 			"checksumSHA1": "49nLCb5+dhuo7HZUjl1TxjiqcWo=",
 			"path": "github.com/rjansen/haki/http",
-			"revision": "6d5b30f764ea8c9a451466fbc98951d41a53ccfe",
-			"revisionTime": "2016-12-13T08:54:53Z"
+			"revision": "b3c4c79b775d5ab383a37b095780a3c70c394765",
+			"revisionTime": "2016-12-13T13:20:36Z"
 		},
 		{
 			"checksumSHA1": "RrsaAwXskg4ro75z3qvKlH09XvU=",
 			"path": "github.com/rjansen/haki/media/json",
-			"revision": "6d5b30f764ea8c9a451466fbc98951d41a53ccfe",
-			"revisionTime": "2016-12-13T08:54:53Z"
+			"revision": "b3c4c79b775d5ab383a37b095780a3c70c394765",
+			"revisionTime": "2016-12-13T13:20:36Z"
 		},
 		{
 			"checksumSHA1": "Z1tyxwqTNXt0+Qonu8ZUaobqYKQ=",
 			"path": "github.com/rjansen/l",
-			"revision": "5a9f7a8d8702f21437d27fddae73340a1aa487ff",
-			"revisionTime": "2016-12-13T08:47:53Z"
+			"revision": "3cb7a27a9c7a162f67811ea6b4f16bd0877521fc",
+			"revisionTime": "2016-12-13T13:14:10Z"
 		},
 		{
 			"checksumSHA1": "W8ZYtAVC0Cj2NxIrCBOlYUSjKD0=",
 			"path": "github.com/rjansen/migi",
-			"revision": "6f895f3b7bf6483e9dafd36152e0592f2ab23a2f",
-			"revisionTime": "2016-12-13T08:43:27Z"
+			"revision": "75c1e65099e0ae3b320ecae14dc60fb845a3768a",
+			"revisionTime": "2016-12-13T13:10:22Z"
 		},
 		{
 			"checksumSHA1": "yMnS6ymCokqjubrEjJ89Im48uOc=",
 			"path": "github.com/rjansen/raizel",
-			"revision": "742af4437f9871ddbfda77148529473c9b874f62",
-			"revisionTime": "2016-12-13T07:23:20Z"
+			"revision": "530adfdb38308b4e152fce22223093ca78e0b31d",
+			"revisionTime": "2016-12-13T13:15:44Z"
 		},
 		{
-			"checksumSHA1": "k4lr+ZKPb8McbWDJTQUZjsRVh48=",
+			"checksumSHA1": "C3mO/fVy49mw/aGTNJqiOmbSocw=",
 			"path": "github.com/rjansen/raizel/sql",
-			"revision": "742af4437f9871ddbfda77148529473c9b874f62",
-			"revisionTime": "2016-12-13T07:23:20Z"
+			"revision": "530adfdb38308b4e152fce22223093ca78e0b31d",
+			"revisionTime": "2016-12-13T13:15:44Z"
 		},
 		{
 			"checksumSHA1": "zmC8/3V4ls53DJlNTKDZwPSC/dA=",
@@ -337,9 +359,5 @@
 			"revisionTime": "2016-12-13T08:54:53Z"
 		}
 	],
-	"rootPath": "github.com/rjansen/fivecolors",
-	"heroku": {
-		"install" : [ "." ],
-		"goVersion": "go1.7"
-	}
+	"rootPath": "github.com/rjansen/fivecolors"
 }

@@ -11,6 +11,7 @@ import (
 	raizelSQL "github.com/rjansen/raizel/sql"
 	//"github.com/rjansen/avalon/identity"
 	_ "github.com/go-sql-driver/mysql"
+	_ "github.com/lib/pq"
 )
 
 func main() {

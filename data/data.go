@@ -1150,7 +1150,7 @@ func (d *Deck) ReadByID(client raizel.Client) error {
 	if d.ID <= 0 {
 		return errors.New("data.Asset.ReadByIDError: Message='Deck.ID is empty'")
 	}
-	err := client.QueryOne("select d.id, d.name, d.id_player from deck d where d.id = ?", d.FetchByID, d.ID)
+	err := client.QueryOne("select d.id, d.name, d.id_player from deck d where d.id = $1", d.FetchByID, d.ID)
 	if err != nil {
 		return err
 	}
@@ -1162,7 +1162,7 @@ func (d *Deck) ReadByName(client raizel.Client) error {
 	if strings.TrimSpace(d.Name) == "" {
 		return errors.New("data.Deck.ReadByNameErr: Message='Deck.Name is empty'")
 	}
-	err := client.QueryOne("select d.id, d.name, d.id_player from deck d where d.name = ?", d.FetchByID, d.Name)
+	err := client.QueryOne("select d.id, d.name, d.id_player from deck d where d.name = $1", d.FetchByID, d.Name)
 	if err != nil {
 		return err
 	}
@@ -1185,8 +1185,8 @@ func (d *Deck) ReadCardsByID(client raizel.Client, page int) error {
             left join expansion e on c.id_expansion = e.id
             left join expansion_asset a on a.id_expansion = e.id and a.id_rarity = c.id_rarity
             left join deck_card d on d.id_card = c.id
-        where d.id_deck = ? 
-        order by d.id_board, c.type_label, e.name, abs(c.multiverse_number)`
+        where d.id_deck = $1 
+        order by d.id_board, c.type_label, e.name`
 
 	//tempCards := make([]Card, selectLimit)
 	var tempCards []Card
@@ -1227,7 +1227,7 @@ func (d *Deck) QueryByName(client raizel.Client) ([]Deck, error) {
 		}
 		return nil
 	}
-	err := client.Query("select d.id, d.name, d.id_player from deck d where d.name regexp ?", iterFunc, d.Name)
+	err := client.Query("select d.id, d.name, d.id_player from deck d where d.name regexp $1", iterFunc, d.Name)
 	if err != nil {
 		return nil, err
 	}

@@ -54,5 +54,6 @@ func Get() *Configuration {
 func Setup() error {
 	migi.SetEnvPrefix("")
 	migi.BindEnv("handler.port", "PORT")
+	migi.BindEnv("raizel.sql.url", "DATABASE_URL")
 	return migi.Unmarshal(&Value)
 }
