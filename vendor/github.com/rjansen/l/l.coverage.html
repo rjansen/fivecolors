@@ -1,0 +1,1043 @@
+
+<!DOCTYPE html>
+<html>
+	<head>
+		<meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+		<style>
+			body {
+				background: black;
+				color: rgb(80, 80, 80);
+			}
+			body, pre, #legend span {
+				font-family: Menlo, monospace;
+				font-weight: bold;
+			}
+			#topbar {
+				background: black;
+				position: fixed;
+				top: 0; left: 0; right: 0;
+				height: 42px;
+				border-bottom: 1px solid rgb(80, 80, 80);
+			}
+			#content {
+				margin-top: 50px;
+			}
+			#nav, #legend {
+				float: left;
+				margin-left: 10px;
+			}
+			#legend {
+				margin-top: 12px;
+			}
+			#nav {
+				margin-top: 10px;
+			}
+			#legend span {
+				margin: 0 5px;
+			}
+			.cov0 { color: rgb(192, 0, 0) }
+.cov1 { color: rgb(128, 128, 128) }
+.cov2 { color: rgb(116, 140, 131) }
+.cov3 { color: rgb(104, 152, 134) }
+.cov4 { color: rgb(92, 164, 137) }
+.cov5 { color: rgb(80, 176, 140) }
+.cov6 { color: rgb(68, 188, 143) }
+.cov7 { color: rgb(56, 200, 146) }
+.cov8 { color: rgb(44, 212, 149) }
+.cov9 { color: rgb(32, 224, 152) }
+.cov10 { color: rgb(20, 236, 155) }
+
+		</style>
+	</head>
+	<body>
+		<div id="topbar">
+			<div id="nav">
+				<select id="files">
+				
+				<option value="file0">github.com/rjansen/l/interface.go (50.0%)</option>
+				
+				<option value="file1">github.com/rjansen/l/logger.go (40.8%)</option>
+				
+				<option value="file2">github.com/rjansen/l/logrus.go (60.5%)</option>
+				
+				<option value="file3">github.com/rjansen/l/standard.go (0.0%)</option>
+				
+				<option value="file4">github.com/rjansen/l/zap.go (47.8%)</option>
+				
+				</select>
+			</div>
+			<div id="legend">
+				<span>not tracked</span>
+			
+				<span class="cov0">not covered</span>
+				<span class="cov8">covered</span>
+			
+			</div>
+		</div>
+		<div id="content">
+		
+		<pre class="file" id="file0" style="display: none">package l
+
+import (
+        "fmt"
+        "strings"
+)
+
+const (
+        //STDOUT any message to stdout
+        STDOUT Out = "stdout"
+        //STDERR redirects any message to stderr
+        STDERR Out = "stderr"
+        //DISCARD set logger to ignore all message
+        DISCARD Out = "discard"
+
+        //LOGRUS is the github.com/Sirupsen/logrus id
+        LOGRUS Provider = "logrus"
+        //ZAP is the github.com/uber-go/zap id
+        ZAP Provider = "zap"
+
+        //TEXT is the text log format
+        TEXT Format = "text"
+        //TEXTColor is the text log format with color
+        TEXTColor Format = "text_color"
+        //JSON is the json log format
+        JSON Format = "json"
+        //JSONColor is the json log format with color
+        JSONColor Format = "json_color"
+        //LOGRUSFmtfText is the text with the logrus formatf approach
+        LOGRUSFmtfText Format = "logrusFrmtfText"
+
+        //PANIC is the panic level logger
+        PANIC Level = "panic"
+        //FATAL is the fatal level logger
+        FATAL Level = "fatal"
+        //ERROR is the error level logger
+        ERROR Level = "error"
+        //WARN is the warn level logger
+        WARN Level = "warn"
+        //INFO is the info level logger
+        INFO Level = "info"
+        //DEBUG is the debug level logger
+        DEBUG Level = "debug"
+
+        //StringField is a constant for string logger fields
+        StringField FieldType = iota
+        //BytesField is a constant for byte slice logger fields
+        BytesField
+        //IntField is a constant for string logger fields
+        IntField
+        //Int64Field is a constant for string logger fields
+        Int64Field
+        //FloatField is a constant for string logger fields
+        FloatField
+        //Float64Field is a constant for string logger fields
+        Float64Field
+        //DurationField is a constant for duration logger fields
+        DurationField
+        //TimeField is a constant for time logger fields
+        TimeField
+        //BoolField is a constant for string logger fields
+        BoolField
+        //StructField is a constant for string logger fields
+        StructField
+        //ErrorField is a constant for error logger fields
+        ErrorField
+)
+
+//Provider is the back end implementor id of the logging feature
+type Provider string
+
+func (p Provider) String() string <span class="cov8" title="1">{
+        return string(p)
+}</span>
+
+// Set is a utility method for flag system usage
+func (p *Provider) Set(value string) error <span class="cov0" title="0">{
+
+        *p = Provider(value)
+        return nil
+}</span>
+
+//Out is the type for logger writer config
+type Out string
+
+func (o Out) String() string <span class="cov8" title="1">{
+        return string(o)
+}</span>
+
+// Set is a utility method for flag system usage
+func (o *Out) Set(value string) error <span class="cov8" title="1">{
+        if strings.TrimSpace(value) != "" </span><span class="cov8" title="1">{
+                *o = Out(value)
+        }</span><span class="cov0" title="0"> else {
+                *o = STDOUT
+        }</span>
+        <span class="cov8" title="1">return nil</span>
+}
+
+//Hooks is the type to configure an create hooks for the logger implementation
+type Hooks string
+
+func (h Hooks) String() string <span class="cov8" title="1">{
+        return string(h)
+}</span>
+
+// Set is a utility method for flag system usage
+func (h *Hooks) Set(value string) error <span class="cov0" title="0">{
+        *h = Hooks(strings.TrimSpace(value))
+        return nil
+}</span>
+
+//Level is the threshold of the logger
+type Level string
+
+// String returns a lower-case ASCII representation of the log level.
+func (l Level) String() string <span class="cov8" title="1">{
+        return string(l)
+}</span>
+
+// Set is a utility method for flag system usage
+func (l *Level) Set(value string) error <span class="cov0" title="0">{
+        if strings.TrimSpace(value) != "" </span><span class="cov0" title="0">{
+                *l = Level(value)
+        }</span><span class="cov0" title="0"> else {
+                *l = DEBUG
+        }</span>
+        <span class="cov0" title="0">return nil</span>
+}
+
+//Format is a parameter to controle the logger style
+type Format string
+
+func (f Format) String() string <span class="cov8" title="1">{
+        return string(f)
+}</span>
+
+// Set is a utility method for flag system usage
+func (f *Format) Set(value string) error <span class="cov8" title="1">{
+        if strings.TrimSpace(value) != "" </span><span class="cov8" title="1">{
+                *f = Format(value)
+        }</span><span class="cov0" title="0"> else {
+                *f = TEXT
+        }</span>
+        <span class="cov8" title="1">return nil</span>
+}
+
+//Configuration holds the log beahvior parameters
+type Configuration struct {
+        Debug    bool     `json:"debug" mapstructure:"debug"`
+        Provider Provider `json:"provider" mapstructure:"provider"`
+        Level    Level    `json:"level" mapstructure:"level"`
+        Format   Format   `json:"format" mapstructure:"format"`
+        Out      Out      `json:"out" mapstructure:"out"`
+        Hooks    Hooks    `json:"hooks" mapstructure:"hooks"`
+}
+
+func (l Configuration) String() string <span class="cov8" title="1">{
+        return fmt.Sprintf("Configuration Provider=%s Level=%s Format=%s Out=%s Hooks=%s", l.Provider, l.Level, l.Format, l.Out, l.Hooks)
+}</span>
+
+//FieldType is a type identifier for logger fields
+type FieldType int8
+
+//Field is a struct to send paramaters to log messages
+type Field struct {
+        key     string
+        val     interface{}
+        valType FieldType
+}
+
+//Logger is an interface to write log messages
+type Logger interface {
+        Level() Level
+        IsEnabled(Level) bool
+
+        Debug(string, ...Field)
+        Info(string, ...Field)
+        Warn(string, ...Field)
+        Error(string, ...Field)
+        Panic(string, ...Field)
+        Fatal(string, ...Field)
+
+        Debugf(string, ...interface{})
+        Infof(string, ...interface{})
+        Warnf(string, ...interface{})
+        Errorf(string, ...interface{})
+        Panicf(string, ...interface{})
+        Fatalf(string, ...interface{})
+}
+
+type baseLogger struct {
+        level Level
+}
+
+func (b baseLogger) Level() Level <span class="cov0" title="0">{
+        return b.level
+}</span>
+
+func (b baseLogger) IsEnabled(level Level) bool <span class="cov0" title="0">{
+        return b.level &gt;= level
+}</span>
+
+func (b baseLogger) Debugf(string, ...interface{}) <span class="cov0" title="0">{
+
+}</span>
+
+func (b baseLogger) Infof(string, ...interface{}) <span class="cov0" title="0">{
+
+}</span>
+
+func (b baseLogger) Warnf(string, ...interface{}) <span class="cov0" title="0">{
+
+}</span>
+
+func (b baseLogger) Errorf(string, ...interface{}) <span class="cov0" title="0">{
+
+}</span>
+
+func (b baseLogger) Panicf(string, ...interface{}) <span class="cov0" title="0">{
+
+}</span>
+
+func (b baseLogger) Fatalf(string, ...interface{}) <span class="cov0" title="0">{
+
+}</span>
+</pre>
+		
+		<pre class="file" id="file1" style="display: none">package l
+
+import (
+        "errors"
+        "fmt"
+        "github.com/matryer/resync"
+        "github.com/rjansen/migi"
+        "io"
+        "io/ioutil"
+        "os"
+        "time"
+)
+
+var (
+        //ErrInvalidProvider is the err raised when an invalid provider was select
+        ErrInvalidProvider = errors.New("logger.InvalidProvider Message='Avaible providers are: LOGRUS and ZAP'")
+        //ErrSetupNeverCalled is raised when the Setup method does not call
+        ErrSetupNeverCalled = errors.New("logger.SetupNeverCalledErr Message='You must call logger.Setup before execute this action'")
+        once                resync.Once
+        loggerFactory       func(Configuration) Logger
+        defaultConfig       *Configuration
+        rootLogger          Logger
+)
+
+func init() <span class="cov8" title="1">{
+        fmt.Printf("logger.init\n")
+}</span>
+
+//Setup initializes the logger system
+func Setup(loggerConfig *Configuration) error <span class="cov8" title="1">{
+        if loggerConfig.Debug </span><span class="cov0" title="0">{
+                fmt.Printf("logger.Setup config=%+v\n", loggerConfig)
+        }</span>
+        <span class="cov8" title="1">var setupErr error
+        switch loggerConfig.Provider </span>{
+        <span class="cov8" title="1">case ZAP:
+                setupErr = setupZap(loggerConfig)</span>
+        <span class="cov8" title="1">default:
+                setupErr = setupLogrus(loggerConfig)</span>
+        }
+        <span class="cov8" title="1">if setupErr != nil </span><span class="cov8" title="1">{
+                return setupErr
+        }</span>
+        <span class="cov8" title="1">return nil</span>
+}
+
+//Get gets an implemetor of the configured log provider
+func Get() Logger <span class="cov8" title="1">{
+        once.Do(func() </span><span class="cov8" title="1">{
+                if rootLogger == nil </span><span class="cov8" title="1">{
+                        if !isSetted() </span><span class="cov0" title="0">{
+                                loggerConfig, err := getConfiguration("logger.root")
+                                if err != nil </span><span class="cov0" title="0">{
+                                        fmt.Printf("logger.Get.SetupErr setted=%t defaultConfigIsNil=%t loggerFactoryIsNil=%t error=%s\n", isSetted(), defaultConfig == nil, loggerFactory == nil, err.Error())
+                                        loggerConfig = &amp;Configuration{}
+                                }</span>
+                                <span class="cov0" title="0">if err := Setup(loggerConfig); err != nil </span><span class="cov0" title="0">{
+                                        panic(err)</span>
+                                }
+                        }
+                        <span class="cov8" title="1">rootLogger = create()</span>
+                }
+        })
+        <span class="cov8" title="1">return rootLogger</span>
+}
+
+func isSetted() bool <span class="cov8" title="1">{
+        return loggerFactory != nil &amp;&amp; defaultConfig != nil
+}</span>
+
+func create() Logger <span class="cov8" title="1">{
+        if !isSetted() </span><span class="cov0" title="0">{
+                fmt.Printf("logger.create.setupDoesNotCallErr setted=%t defaultConfigIsNil=%t loggerFactoryIsNil=%t\n", isSetted(), defaultConfig == nil, loggerFactory == nil)
+                panic(ErrSetupNeverCalled)</span>
+        }
+        <span class="cov8" title="1">return loggerFactory(*defaultConfig)</span>
+}
+
+func getConfiguration(configName string) (*Configuration, error) <span class="cov0" title="0">{
+        var loggerConfig *Configuration
+        if err := migi.UnmarshalKey(configName, &amp;loggerConfig); err != nil </span><span class="cov0" title="0">{
+                return nil, err
+        }</span>
+        <span class="cov0" title="0">if loggerConfig.Debug </span><span class="cov0" title="0">{
+                fmt.Printf("logger.getConfiguration Configuration=%s", loggerConfig.String())
+        }</span>
+        <span class="cov0" title="0">return loggerConfig, nil</span>
+}
+
+//New creates a logger implemetor with the provided configuration
+func New(config *Configuration) Logger <span class="cov8" title="1">{
+        switch config.Provider </span>{
+        <span class="cov0" title="0">case ZAP:
+                return newZap(*config)</span>
+        <span class="cov8" title="1">case LOGRUS:
+                return newLogrus(*config)</span>
+        <span class="cov8" title="1">default:
+                panic(ErrInvalidProvider)</span>
+        }
+}
+
+//NewByConfig creates a logger implemetor with the provided named configuration
+func NewByConfig(configName string) Logger <span class="cov0" title="0">{
+        loggerConfig, err := getConfiguration(configName)
+        if err != nil </span><span class="cov0" title="0">{
+                panic(err)</span>
+        }
+        <span class="cov0" title="0">return New(loggerConfig)</span>
+}
+
+func getOutput(out Out) (io.Writer, error) <span class="cov8" title="1">{
+        switch out </span>{
+        <span class="cov8" title="1">case STDOUT:
+                return os.Stdout, nil</span>
+        <span class="cov8" title="1">case STDERR:
+                return os.Stderr, nil</span>
+        <span class="cov8" title="1">case DISCARD:
+                return ioutil.Discard, nil</span>
+        <span class="cov8" title="1">default:
+                file, err := os.OpenFile(out.String(), os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0666)
+                if err != nil </span><span class="cov0" title="0">{
+                        return nil, fmt.Errorf("CreateFileOutputErr[Out=%v Message='%v']", out, err)
+                }</span>
+                <span class="cov8" title="1">return file, nil</span>
+        }
+}
+
+func Debug(message string, fields ...Field) <span class="cov0" title="0">{
+        Get().Debug(message, fields...)
+}</span>
+
+func Info(message string, fields ...Field) <span class="cov0" title="0">{
+        Get().Info(message, fields...)
+
+}</span>
+
+func Warn(message string, fields ...Field) <span class="cov0" title="0">{
+        Get().Warn(message, fields...)
+}</span>
+
+func Error(message string, fields ...Field) <span class="cov0" title="0">{
+        Get().Error(message, fields...)
+}</span>
+
+func Panic(message string, fields ...Field) <span class="cov0" title="0">{
+        Get().Panic(message, fields...)
+}</span>
+
+func Fatal(message string, fields ...Field) <span class="cov0" title="0">{
+        Get().Fatal(message, fields...)
+}</span>
+
+func Debugf(message string, fields ...interface{}) <span class="cov0" title="0">{
+        Get().Debugf(message, fields...)
+}</span>
+
+func Infof(message string, fields ...interface{}) <span class="cov0" title="0">{
+        Get().Infof(message, fields...)
+}</span>
+
+func Warnf(message string, fields ...interface{}) <span class="cov0" title="0">{
+        Get().Warnf(message, fields...)
+}</span>
+
+func Errorf(message string, fields ...interface{}) <span class="cov0" title="0">{
+        Get().Errorf(message, fields...)
+}</span>
+
+func Panicf(message string, fields ...interface{}) <span class="cov0" title="0">{
+        Get().Panicf(message, fields...)
+}</span>
+
+func Fatalf(message string, fields ...interface{}) <span class="cov0" title="0">{
+        Get().Fatalf(message, fields...)
+}</span>
+
+func String(key, val string) Field <span class="cov8" title="1">{
+        return Field{key: key, val: val, valType: StringField}
+}</span>
+
+func Bytes(key string, val []byte) Field <span class="cov0" title="0">{
+        return Field{key: key, val: string(val), valType: BytesField}
+}</span>
+
+func Int(key string, val int) Field <span class="cov0" title="0">{
+        return Field{key: key, val: val, valType: IntField}
+}</span>
+
+func Int64(key string, val int64) Field <span class="cov0" title="0">{
+        return Field{key: key, val: val, valType: Int64Field}
+}</span>
+
+func Float(key string, val float32) Field <span class="cov0" title="0">{
+        return Field{key: key, val: val, valType: FloatField}
+}</span>
+
+func Float64(key string, val float64) Field <span class="cov0" title="0">{
+        return Field{key: key, val: val, valType: Float64Field}
+}</span>
+
+func Bool(key string, val bool) Field <span class="cov0" title="0">{
+        return Field{key: key, val: val, valType: BoolField}
+}</span>
+
+func Duration(key string, val time.Duration) Field <span class="cov0" title="0">{
+        return Field{key: key, val: val, valType: DurationField}
+}</span>
+
+func Time(key string, val time.Time) Field <span class="cov0" title="0">{
+        return Field{key: key, val: val, valType: TimeField}
+}</span>
+
+func Struct(key string, val interface{}) Field <span class="cov8" title="1">{
+        return Field{key: key, val: val, valType: StructField}
+}</span>
+
+func Err(val error) Field <span class="cov0" title="0">{
+        return Field{key: "error", val: val, valType: ErrorField}
+}</span>
+</pre>
+		
+		<pre class="file" id="file2" style="display: none">package l
+
+import (
+        "fmt"
+        "github.com/Sirupsen/logrus"
+        logrus_syslog "github.com/Sirupsen/logrus/hooks/syslog"
+        "io"
+        "log/syslog"
+        "os"
+        //"strings"
+)
+
+func (f Format) toLogrusFormatter() logrus.Formatter <span class="cov8" title="1">{
+        switch f </span>{
+        <span class="cov8" title="1">case JSON:
+                return new(logrus.JSONFormatter)</span>
+        <span class="cov8" title="1">default:
+                return &amp;logrus.TextFormatter{ForceColors: false, DisableColors: true, FullTimestamp: true}</span>
+        }
+}
+
+func (o Out) toLogrusOut() (io.Writer, error) <span class="cov8" title="1">{
+        return getOutput(o)
+}</span>
+
+func (n Level) toLogrusLevel() (logrus.Level, error) <span class="cov0" title="0">{
+        return logrus.ParseLevel(n.String())
+}</span>
+
+func (h Hooks) toLogrusSyslogHook() (*logrus_syslog.SyslogHook, error) <span class="cov0" title="0">{
+        hookName := string(h)
+        switch hookName </span>{
+        <span class="cov0" title="0">case "syslog":
+                //hook, err := logrus_syslog.NewSyslogHook("udp", "127.0.0.1:514", syslog.LOG_DEBUG, "glive")
+                hook, err := logrus_syslog.NewSyslogHook("udp", "127.0.0.1:514", syslog.LOG_DEBUG, "epedion")
+                if err != nil </span><span class="cov0" title="0">{
+                        return nil, err
+                }</span>
+                <span class="cov0" title="0">return hook, nil</span>
+        <span class="cov0" title="0">default:
+                return nil, nil</span>
+        }
+
+        // hooksValue := string(h)
+        // if hooksValue == "" {
+        //         return nil, nil
+        // }
+        // var hookName string
+        // //var hookParams string
+        // if !strings.Contains(hooksValue, "?") {
+        //         //hookName, hookParams = hooksValue, ""
+        //         hookName = hooksValue
+        // } else {
+        //         hookConfig := strings.Split(hooksValue, "?")
+        //         //hookName, hookParameters := hookConfig[0], hookConfig[1]
+        //         //hookName, hookParams = hookConfig[0], hookConfig[1]
+        //         hookName = hookConfig[0]
+        // }
+        // var hooks []logrus.Hook
+        // switch hookName {
+        // case "syslog":
+        //         //hook, err := logrus_syslog.NewSyslogHook("udp", "localhost:514", syslog.LOG_DEBUG, "glive_localhost")
+        //         hook, err := logrus_syslog.NewSyslogHook("tcp", "127.0.0.1:514", syslog.LOG_DEBUG, "glive_localhost")
+        //         if err != nil {
+        //                 return nil, err
+        //         }
+        //         hooks = append(hooks, hook)
+        //         return hooks, nil
+        // default:
+        //         return nil, nil
+        // }
+}
+
+type logrusLogger struct {
+        baseLogger
+        logger *logrus.Logger
+}
+
+func (l logrusLogger) toLogrusFields(fields ...Field) logrus.Fields <span class="cov8" title="1">{
+        logrusFields := make(map[string]interface{})
+        for _, v := range fields </span><span class="cov8" title="1">{
+                logrusFields[v.key] = v.val
+        }</span>
+        <span class="cov8" title="1">return logrusFields</span>
+}
+
+func (l logrusLogger) toInterfaceSlice(fields ...Field) []interface{} <span class="cov0" title="0">{
+        logrusFields := make([]interface{}, len(fields))
+        for i, v := range fields </span><span class="cov0" title="0">{
+                logrusFields[i] = v.val
+        }</span>
+        <span class="cov0" title="0">return logrusFields</span>
+}
+
+func (l logrusLogger) Debug(message string, fields ...Field) <span class="cov8" title="1">{
+        if l.logger.Level &lt; logrus.DebugLevel </span><span class="cov0" title="0">{
+                return
+        }</span>
+        <span class="cov8" title="1">if len(fields) &lt;= 0 </span><span class="cov8" title="1">{
+                l.logger.Debug(message)
+        }</span><span class="cov8" title="1"> else {
+                l.logger.WithFields(l.toLogrusFields(fields...)).Debug(message)
+        }</span>
+}
+
+func (l logrusLogger) Info(message string, fields ...Field) <span class="cov8" title="1">{
+        if l.logger.Level &lt; logrus.InfoLevel </span><span class="cov0" title="0">{
+                return
+        }</span>
+        <span class="cov8" title="1">if len(fields) &lt;= 0 </span><span class="cov8" title="1">{
+                l.logger.Info(message)
+        }</span><span class="cov8" title="1"> else {
+                l.logger.WithFields(l.toLogrusFields(fields...)).Info(message)
+        }</span>
+}
+
+func (l logrusLogger) Warn(message string, fields ...Field) <span class="cov8" title="1">{
+        if l.logger.Level &lt; logrus.WarnLevel </span><span class="cov0" title="0">{
+                return
+        }</span>
+        <span class="cov8" title="1">if len(fields) &lt;= 0 </span><span class="cov8" title="1">{
+                l.logger.Warn(message)
+        }</span><span class="cov8" title="1"> else {
+                l.logger.WithFields(l.toLogrusFields(fields...)).Warn(message)
+        }</span>
+}
+
+func (l logrusLogger) Error(message string, fields ...Field) <span class="cov8" title="1">{
+        if len(fields) &lt;= 0 </span><span class="cov8" title="1">{
+                l.logger.Error(message)
+        }</span><span class="cov8" title="1"> else {
+                l.logger.WithFields(l.toLogrusFields(fields...)).Error(message)
+        }</span>
+}
+
+func (l logrusLogger) Panic(message string, fields ...Field) <span class="cov0" title="0">{
+        if len(fields) &lt;= 0 </span><span class="cov0" title="0">{
+                l.logger.Panic(message)
+        }</span><span class="cov0" title="0"> else {
+                l.logger.WithFields(l.toLogrusFields(fields...)).Panic(message)
+        }</span>
+}
+
+func (l logrusLogger) Fatal(message string, fields ...Field) <span class="cov0" title="0">{
+        if len(fields) &lt;= 0 </span><span class="cov0" title="0">{
+                l.logger.Fatal(message)
+        }</span><span class="cov0" title="0"> else {
+                l.logger.WithFields(l.toLogrusFields(fields...)).Fatal(message)
+        }</span>
+}
+
+func (l logrusLogger) Debugf(message string, fields ...interface{}) <span class="cov0" title="0">{
+        l.logger.Debugf(message, fields...)
+}</span>
+
+func (l logrusLogger) Infof(message string, fields ...interface{}) <span class="cov0" title="0">{
+        l.logger.Infof(message, fields...)
+}</span>
+
+func (l logrusLogger) Warnf(message string, fields ...interface{}) <span class="cov0" title="0">{
+        l.logger.Warnf(message, fields...)
+}</span>
+
+func (l logrusLogger) Errorf(message string, fields ...interface{}) <span class="cov0" title="0">{
+        l.logger.Errorf(message, fields...)
+}</span>
+
+func (l logrusLogger) Panicf(message string, fields ...interface{}) <span class="cov0" title="0">{
+        l.logger.Panicf(message, fields...)
+}</span>
+
+func (l logrusLogger) Fatalf(message string, fields ...interface{}) <span class="cov0" title="0">{
+        l.logger.Fatalf(message, fields...)
+}</span>
+
+func setupLogrus(loggerConfig *Configuration) error <span class="cov8" title="1">{
+        logrusConfig, errs := toLogrusConfig(*loggerConfig)
+        if errs != nil &amp;&amp; len(errs) &gt; 0 </span><span class="cov8" title="1">{
+                return fmt.Errorf("SetupLogrusErr Errs=%v", errs)
+        }</span>
+        <span class="cov8" title="1">logrus.SetLevel(logrusConfig.level)
+        logrus.SetFormatter(logrusConfig.formatter)
+        logrus.SetOutput(logrusConfig.output)
+        loggerFactory = newLogrus
+        defaultConfig = loggerConfig
+        return nil</span>
+}
+
+func newLogrus(config Configuration) Logger <span class="cov8" title="1">{
+        logrusConfig, errs := toLogrusConfig(config)
+        if config.Debug &amp;&amp; errs != nil </span><span class="cov0" title="0">{
+                fmt.Printf("NewLogrusConfigErr=%+v\n", errs)
+        }</span>
+        <span class="cov8" title="1">if config.Debug </span><span class="cov0" title="0">{
+                fmt.Printf("NewLogrusConfig=%s\n", logrusConfig.String())
+        }</span>
+        <span class="cov8" title="1">logger := new(logrusLogger)
+        logger.logger = &amp;logrus.Logger{
+                Level:     logrusConfig.level,
+                Formatter: logrusConfig.formatter,
+                Hooks:     make(logrus.LevelHooks),
+                Out:       logrusConfig.output,
+        }
+        //logger.logger.SetNoLock()
+        //l3, err := syslog.Dial("udp", "127.0.0.1:514", syslog.LOG_ERR, "glive")
+        //l3, err := syslog.Dial("udp", "localhost", syslog.LOG_ERR, "GoExample") // connection to a log daemon
+        //defer l3.Close()
+        //if err != nil {
+        //        fmt.Println("CreateSyslogErr", err.Error())
+        //}
+        //l3.Err("SyslogSimpleMsgErr")
+        // hooks, err := config.Hooks.toLogrusSyslogHook()
+        // if err != nil {
+        //         fmt.Println("CreateSyslogHook", err.Error())
+        // }
+        // if hooks != nil {
+        //         //for _, hook := range hooks {
+        //         hooks.Writer.Err("SettingSyslogErr")
+        //         logger.logger.Hooks.Add(hooks)
+        //         fmt.Println("SyslogHookAdded")
+        //         //}
+        // }
+        if config.Debug </span><span class="cov0" title="0">{
+                fmt.Printf("NewLogrusLogger=%+v\n", logger.logger)
+        }</span>
+        <span class="cov8" title="1">return logger</span>
+}
+
+type logrusConfig struct {
+        output    io.Writer
+        formatter logrus.Formatter
+        level     logrus.Level
+}
+
+func (l logrusConfig) String() string <span class="cov0" title="0">{
+        return fmt.Sprintf("logrusConfig[level=%s formatter=%t output=%t]", l.level.String(), l.formatter != nil, l.output != nil)
+}</span>
+
+func toLogrusConfig(cfg Configuration) (logrusConfig, []error) <span class="cov8" title="1">{
+        var errs []error
+        var output io.Writer
+        if cfg.Out == Out("") </span><span class="cov8" title="1">{
+                output = os.Stdout
+        }</span><span class="cov8" title="1"> else if tmpWriter, tmpErr := cfg.Out.toLogrusOut(); tmpErr != nil </span><span class="cov0" title="0">{
+                errs = append(errs, tmpErr)
+                output = os.Stdout
+        }</span><span class="cov8" title="1"> else {
+                output = tmpWriter
+        }</span>
+        <span class="cov8" title="1">var level logrus.Level
+        if cfg.Level == Level("") </span><span class="cov8" title="1">{
+                level = logrus.DebugLevel
+        }</span><span class="cov8" title="1"> else if tmlLevel, tmpErr := logrus.ParseLevel(cfg.Level.String()); tmpErr != nil </span><span class="cov8" title="1">{
+                errs = append(errs, tmpErr)
+                level = logrus.DebugLevel
+        }</span><span class="cov0" title="0"> else {
+                level = tmlLevel
+        }</span>
+        <span class="cov8" title="1">return logrusConfig{
+                level:     level,
+                formatter: cfg.Format.toLogrusFormatter(),
+                output:    output,
+        }, errs</span>
+}
+</pre>
+		
+		<pre class="file" id="file3" style="display: none">package l
+
+import (
+        "io"
+        "log"
+        "os"
+)
+
+//DefaultLogger holds the level loggers pointer
+type DefaultLogger struct {
+        Debug *log.Logger
+        Info  *log.Logger
+        Note  *log.Logger
+        Warn  *log.Logger
+        Error *log.Logger
+        Panic *log.Logger
+}
+
+func newLogger(loggerConfig *Configuration) *DefaultLogger <span class="cov0" title="0">{
+        //fmt.Printf("CreatingLogger: File=%v Level=%v\n", loggerConfig.Output, loggerConfig.Level)
+        output, err := os.OpenFile(string(loggerConfig.Out), os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0666)
+        if err != nil </span><span class="cov0" title="0">{
+                //fmt.Printf("CreateOrOpenLoggerFileError: Message='%v'", err)
+        }</span>
+        <span class="cov0" title="0">errorWriter := io.MultiWriter(output, os.Stderr)
+        _logger := &amp;DefaultLogger{
+                Debug: log.New(output, "DEBUG ", log.Ldate|log.Ltime|log.Lshortfile),
+                Info:  log.New(output, "INFO ", log.Ldate|log.Ltime|log.Lshortfile),
+                Note:  log.New(output, "NOTE ", log.Ldate|log.Ltime|log.Lshortfile),
+                Warn:  log.New(output, "WARN ", log.Ldate|log.Ltime|log.Lshortfile),
+                Error: log.New(errorWriter, "ERROR ", log.Ldate|log.Ltime|log.Lshortfile),
+                Panic: log.New(errorWriter, "PANIC ", log.Ldate|log.Ltime|log.Lshortfile),
+        }
+        return _logger</span>
+}
+</pre>
+		
+		<pre class="file" id="file4" style="display: none">package l
+
+import (
+        "github.com/uber-go/zap"
+        "os"
+        "time"
+)
+
+var (
+        zapFactory zap.Logger
+)
+
+func (f Format) toZapEncoder() zap.Encoder <span class="cov8" title="1">{
+        switch f </span>{
+        <span class="cov0" title="0">case JSON:
+                return zap.NewJSONEncoder()</span>
+        <span class="cov8" title="1">default:
+                return zap.NewTextEncoder()</span>
+        }
+}
+
+func (o Out) toZapOut() zap.Option <span class="cov0" title="0">{
+        switch o </span>{
+        <span class="cov0" title="0">case STDOUT:
+                return zap.Output(os.Stdout)</span>
+        <span class="cov0" title="0">case STDERR:
+                return zap.Output(os.Stderr)</span>
+        <span class="cov0" title="0">case DISCARD:
+                return zap.DiscardOutput</span>
+        <span class="cov0" title="0">default:
+                fileOutput, _ := getOutput(o)
+                zapOutput := zap.AddSync(fileOutput)
+                return zap.Output(zapOutput)</span>
+        }
+}
+
+func (n Level) toZapLevel() zap.Level <span class="cov8" title="1">{
+        switch n </span>{
+        <span class="cov0" title="0">case DEBUG:
+                return zap.DebugLevel</span>
+        <span class="cov0" title="0">case INFO:
+                return zap.InfoLevel</span>
+        <span class="cov0" title="0">case WARN:
+                return zap.WarnLevel</span>
+        <span class="cov0" title="0">case ERROR:
+                return zap.ErrorLevel</span>
+        <span class="cov0" title="0">case PANIC:
+                return zap.PanicLevel</span>
+        <span class="cov0" title="0">case FATAL:
+                return zap.FatalLevel</span>
+        <span class="cov8" title="1">default:
+                return zap.FatalLevel</span>
+        }
+}
+
+type zapLogger struct {
+        baseLogger
+        logger zap.Logger
+}
+
+func (l zapLogger) toZapFields(fields ...Field) []zap.Field <span class="cov8" title="1">{
+        var zapFields []zap.Field
+        for _, v := range fields </span><span class="cov8" title="1">{
+                switch v.valType </span>{
+                <span class="cov0" title="0">case IntField:
+                        zapFields = append(zapFields, zap.Int(v.key, v.val.(int)))</span>
+                <span class="cov0" title="0">case Int64Field:
+                        zapFields = append(zapFields, zap.Int64(v.key, v.val.(int64)))</span>
+                <span class="cov0" title="0">case StringField:
+                        zapFields = append(zapFields, zap.String(v.key, v.val.(string)))</span>
+                <span class="cov0" title="0">case BytesField:
+                        //TODO: String cast is too slow
+                        zapFields = append(zapFields, zap.String(v.key, string(v.val.([]byte))))</span>
+                <span class="cov0" title="0">case BoolField:
+                        zapFields = append(zapFields, zap.Bool(v.key, v.val.(bool)))</span>
+                <span class="cov0" title="0">case FloatField, Float64Field:
+                        zapFields = append(zapFields, zap.Float64(v.key, v.val.(float64)))</span>
+                <span class="cov0" title="0">case DurationField:
+                        zapFields = append(zapFields, zap.Duration(v.key, v.val.(time.Duration)))</span>
+                <span class="cov0" title="0">case TimeField:
+                        zapFields = append(zapFields, zap.Time(v.key, v.val.(time.Time)))</span>
+                <span class="cov0" title="0">case ErrorField:
+                        zapFields = append(zapFields, zap.Error(v.val.(error)))</span>
+                <span class="cov8" title="1">default:
+                        zapFields = append(zapFields, zap.Object(v.key, v.val))</span>
+                }
+        }
+        <span class="cov8" title="1">return zapFields</span>
+}
+
+func (l zapLogger) Debug(message string, fields ...Field) <span class="cov8" title="1">{
+        if len(fields) &gt; 0 </span><span class="cov8" title="1">{
+                l.logger.Debug(message, l.toZapFields(fields...)...)
+        }</span><span class="cov0" title="0"> else {
+                l.logger.Debug(message)
+        }</span>
+}
+
+func (l zapLogger) Info(message string, fields ...Field) <span class="cov8" title="1">{
+        if len(fields) &gt; 0 </span><span class="cov8" title="1">{
+                l.logger.Info(message, l.toZapFields(fields...)...)
+        }</span><span class="cov0" title="0"> else {
+                l.logger.Info(message)
+        }</span>
+}
+
+func (l zapLogger) Warn(message string, fields ...Field) <span class="cov8" title="1">{
+        if len(fields) &gt; 0 </span><span class="cov8" title="1">{
+                l.logger.Info(message, l.toZapFields(fields...)...)
+        }</span><span class="cov0" title="0"> else {
+                l.logger.Warn(message)
+        }</span>
+}
+
+func (l zapLogger) Error(message string, fields ...Field) <span class="cov8" title="1">{
+        if len(fields) &gt; 0 </span><span class="cov8" title="1">{
+                l.logger.Error(message, l.toZapFields(fields...)...)
+        }</span><span class="cov0" title="0"> else {
+                l.logger.Error(message)
+        }</span>
+}
+
+func (l zapLogger) Panic(message string, fields ...Field) <span class="cov0" title="0">{
+        if len(fields) &gt; 0 </span><span class="cov0" title="0">{
+                l.logger.Panic(message, l.toZapFields(fields...)...)
+        }</span><span class="cov0" title="0"> else {
+                l.logger.Panic(message)
+        }</span>
+}
+
+func (l zapLogger) Fatal(message string, fields ...Field) <span class="cov0" title="0">{
+        if len(fields) &gt; 0 </span><span class="cov0" title="0">{
+                l.logger.Fatal(message, l.toZapFields(fields...)...)
+        }</span><span class="cov0" title="0"> else {
+                l.logger.Fatal(message)
+        }</span>
+}
+
+func setupZap(loggerConfig *Configuration) error <span class="cov8" title="1">{
+        loggerFactory = newZap
+        defaultConfig = loggerConfig
+        return nil
+}</span>
+
+func newZap(config Configuration) Logger <span class="cov8" title="1">{
+        zapConfig, _ := createZapConfig(config)
+        logger := new(zapLogger)
+        logger.logger = zap.New(
+                zapConfig.formatter,
+                zapConfig.level,
+                zapConfig.output,
+        )
+        return logger
+}</span>
+
+type zapConfig struct {
+        output    zap.Option
+        formatter zap.Encoder
+        level     zap.Level
+}
+
+func createZapConfig(cfg Configuration) (zapConfig, []error) <span class="cov8" title="1">{
+        var errs []error
+        var output zap.Option
+        if cfg.Out == Out("") </span><span class="cov8" title="1">{
+                output = zap.Output(os.Stdout)
+        }</span><span class="cov0" title="0"> else {
+                output = cfg.Out.toZapOut()
+        }</span>
+        <span class="cov8" title="1">var level zap.Level
+        if cfg.Level == Level(0) </span><span class="cov0" title="0">{
+                level = zap.DebugLevel
+        }</span><span class="cov8" title="1"> else {
+                level = cfg.Level.toZapLevel()
+        }</span>
+        <span class="cov8" title="1">return zapConfig{
+                level:     level,
+                formatter: cfg.Format.toZapEncoder(),
+                output:    output,
+        }, errs</span>
+}
+</pre>
+		
+		</div>
+	</body>
+	<script>
+	(function() {
+		var files = document.getElementById('files');
+		var visible;
+		files.addEventListener('change', onChange, false);
+		function select(part) {
+			if (visible)
+				visible.style.display = 'none';
+			visible = document.getElementById(part);
+			if (!visible)
+				return;
+			files.value = part;
+			visible.style.display = 'block';
+			location.hash = part;
+		}
+		function onChange() {
+			select(files.value);
+			window.scrollTo(0, 0);
+		}
+		if (location.hash != "") {
+			select(location.hash.substr(1));
+		}
+		if (!visible) {
+			select("file0");
+		}
+	})();
+	</script>
+</html>
