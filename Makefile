@@ -1,6 +1,6 @@
 NAME 		:= fivecolors
 BIN         := $(NAME)
-REPO        := farm.e-pedion.com/repo/$(NAME)
+REPO        := github.com/rjansen/$(NAME)
 BUILD       := $(shell git rev-parse --short HEAD)
 #VERSION     := $(shell git describe --tags $(shell git rev-list --tags --max-count=1))
 MAKEFILE    := $(word $(words $(MAKEFILE_LIST)), $(MAKEFILE_LIST))
@@ -51,7 +51,7 @@ build:
 
 .PHONY: run
 run: build
-	./$(NAME) --cfg $(CONF)
+	./$(NAME) -ecf $(CONF)
 
 pkg_data:
 	@echo "Add data pkg for tests"

@@ -10,13 +10,13 @@ import (
 	"net/http"
 	"net/http/httptest"
 
-	"farm.e-pedion.com/repo/fivecolors/config"
-	"farm.e-pedion.com/repo/fivecolors/data"
-	l "farm.e-pedion.com/repo/logger"
+	"github.com/rjansen/fivecolors/config"
+	"github.com/rjansen/fivecolors/data"
+	"github.com/rjansen/l"
 
-	"farm.e-pedion.com/repo/fivecolors/api"
-	raizelSQL "farm.e-pedion.com/repo/persistence/sql"
 	_ "github.com/go-sql-driver/mysql"
+	"github.com/rjansen/fivecolors/api"
+	raizelSQL "github.com/rjansen/raizel/sql"
 	"github.com/stretchr/testify/assert"
 )
 

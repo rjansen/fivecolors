@@ -9,12 +9,12 @@ import (
 	//"errors"
 	"testing"
 
-	"farm.e-pedion.com/repo/fivecolors/config"
-	"farm.e-pedion.com/repo/fivecolors/data"
-	l "farm.e-pedion.com/repo/logger"
-	raizel "farm.e-pedion.com/repo/persistence"
-	raizelSQL "farm.e-pedion.com/repo/persistence/sql"
 	_ "github.com/go-sql-driver/mysql"
+	"github.com/rjansen/fivecolors/config"
+	"github.com/rjansen/fivecolors/data"
+	"github.com/rjansen/l"
+	"github.com/rjansen/raizel"
+	raizelSQL "github.com/rjansen/raizel/sql"
 	"github.com/stretchr/testify/assert"
 )
 

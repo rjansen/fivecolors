@@ -3,67 +3,63 @@ package main
 import (
 	"net/http"
 
-	"farm.e-pedion.com/repo/fivecolors/api"
-	"farm.e-pedion.com/repo/fivecolors/config"
-	"farm.e-pedion.com/repo/fivecolors/data"
-	"farm.e-pedion.com/repo/fivecolors/security"
-	"farm.e-pedion.com/repo/logger"
-	raizelSQL "farm.e-pedion.com/repo/persistence/sql"
-	"farm.e-pedion.com/repo/security/identity"
+	"github.com/rjansen/fivecolors/api"
+	// "github.com/rjansen/fivecolors/data"
+	"github.com/rjansen/fivecolors/config"
+	"github.com/rjansen/l"
+	// "github.com/rjansen/migi"
+	raizelSQL "github.com/rjansen/raizel/sql"
+	//"github.com/rjansen/avalon/identity"
 	_ "github.com/go-sql-driver/mysql"
 )
 
 func main() {
 	var err error
-	err = config.Setup()
-	if err != nil {
+	if err = config.Setup(); err != nil {
 		panic(err)
 	}
-	configuration := config.Get()
 
-	err = logger.Setup(&configuration.Logger)
-	if err != nil {
+	if err = l.Setup(&config.Value.L); err != nil {
 		panic(err)
 	}
-	log := logger.Get()
 
-	if err = data.Setup(configuration.DB); err != nil {
-		log.Panic("FivecolorsSetupError", logger.Err(err))
-	}
-	defer data.Close()
+	// if err = data.Setup(configuration.DB); err != nil {
+	// 	l.Panic("FivecolorsSetupError", l.Err(err))
+	// }
+	// defer data.Close()
 
-	if err = raizelSQL.Setup(&configuration.Raizel); err != nil {
-		log.Panic("FivecolorsSetupError", logger.Err(err))
-	}
-
-	if err = identity.Setup(&configuration.Identity); err != nil {
-		log.Panic("IdentitySetupError", logger.Err(err))
+	if err = raizelSQL.Setup(&config.Value.Raizel); err != nil {
+		l.Panic("5colors.RaizelSetupError", l.Err(err))
 	}
 
-	if err = api.Setup(*configuration); err != nil {
-		log.Panic("ApiSetupError", logger.Err(err))
-	}
+	// if err = identity.Setup(&configuration.Identity); err != nil {
+	// 	l.Panic("IdentitySetupError", l.Err(err))
+	// }
 
-	http.Handle("/identity/", security.NewIdentityHandler())
-	http.Handle("/player/", api.NewGetPlayerHandler())
-	http.Handle("/card/", api.NewQueryCardHandler())
-	http.Handle("/expansion/", api.NewQueryExpansionHandler())
-	http.Handle("/asset/", api.NewGetAssetHandler())
-	http.Handle("/inventory/", api.NewInventoryHandler())
-	http.Handle("/deck/", api.NewDeckHandler())
+	// if err = api.Setup(*configuration); err != nil {
+	// 	l.Panic("ApiSetupError", l.Err(err))
+	// }
+
+	// http.Handle("/identity/", security.NewIdentityHandler())
+	// http.Handle("/player/", api.NewGetPlayerHandler())
+	// http.Handle("/card/", api.NewQueryCardHandler())
+	// http.Handle("/expansion/", api.NewQueryExpansionHandler())
+	// http.Handle("/asset/", api.NewGetAssetHandler())
+	// http.Handle("/inventory/", api.NewInventoryHandler())
+	// http.Handle("/deck/", api.NewDeckHandler())
 	http.HandleFunc("/api/deck/", api.NewAnonDeckHandler())
 
-	log.Info("FivecolorsStart",
-		logger.String("Version", configuration.Version),
-		logger.String("HandlerVersion", configuration.Handler.Version),
-		logger.String("BindAddress", configuration.Handler.BindAddress),
+	l.Info("FivecolorsStart",
+		l.String("Version", config.Value.Version),
+		l.String("HandlerVersion", config.Value.Handler.Version),
+		l.String("BindAddress", config.Value.Handler.BindAddress()),
 	)
-	err = http.ListenAndServe(configuration.Handler.BindAddress, nil)
+	err = http.ListenAndServe(config.Value.Handler.BindAddress(), nil)
 	if err != nil {
 		panic(err)
 	}
-	log.Info("FivecolorsStop",
-		logger.String("Version", configuration.Version),
-		logger.String("HandlerVersion", configuration.Handler.Version),
+	l.Info("FivecolorsStop",
+		l.String("Version", config.Value.Version),
+		l.String("HandlerVersion", config.Value.Handler.Version),
 	)
 }

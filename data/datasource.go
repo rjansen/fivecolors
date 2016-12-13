@@ -3,9 +3,9 @@ package data
 import (
 	"database/sql"
 	"errors"
-	"farm.e-pedion.com/repo/fivecolors/config"
-	"farm.e-pedion.com/repo/logger"
 	"fmt"
+	"github.com/rjansen/fivecolors/config"
+	"github.com/rjansen/l"
 )
 
 //Pool is a variable to hold the Database Pool
@@ -24,7 +24,6 @@ func GetPool() (*DBPool, error) {
 
 //Setup configures a poll for database connections
 func Setup(config config.DBConfig) error {
-	log = logger.Get()
 	datasource := Datasource{
 		Driver:   config.Driver,
 		Username: config.Username,
@@ -36,24 +35,24 @@ func Setup(config config.DBConfig) error {
 		MaxCons:    10,
 		Datasource: datasource,
 	}
-	log.Infof("OpeningConnection: DBPool=%+v", pool)
+	l.Infof("OpeningConnection: DBPool=%+v", pool)
 	conn, err := sql.Open(pool.Datasource.Driver, pool.Datasource.GetDSN())
 	if err != nil {
-		log.Errorf("OpenConnectionError: DBPool=%+v Message='%v'", pool, err.Error())
+		l.Errorf("OpenConnectionError: DBPool=%+v Message='%v'", pool, err.Error())
 		return fmt.Errorf("GetConnectionError: Cause=%v", err.Error())
 	}
 	pool.Connection = conn
-	log.Infof("data.Setted: Config=%+v", config)
+	l.Infof("data.Setted: Config=%+v", config)
 	return nil
 }
 
 //Close close the database pool
 func Close() error {
 	if pool == nil || pool.Connection == nil {
-		log.Errorf("CloseConnectionError: DBPool=%+v Message='Connection pool is nil'", pool)
+		l.Errorf("CloseConnectionError: DBPool=%+v Message='Connection pool is nil'", pool)
 		return errors.New("SetupMustCalled: Message='You must call Setup with a DBConfig before get a DBpool reference')")
 	}
-	log.Infof("CloseConnection: DBPool=%+v", pool)
+	l.Infof("CloseConnection: DBPool=%+v", pool)
 	return pool.Connection.Close()
 }
 
@@ -73,7 +72,7 @@ func (d *DBPool) GetConnection() (*sql.DB, error) {
 	if err := d.Connection.Ping(); err != nil {
 		return nil, err
 	}
-	log.Debugf("GetConnection: DBPool=%+v", d)
+	l.Debugf("GetConnection: DBPool=%+v", d)
 	return d.Connection, nil
 }
 
