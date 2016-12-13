@@ -1230,7 +1230,6 @@ func (d *Deck) QueryByName(client raizel.Client) ([]Deck, error) {
 	} else {
 		err = client.Query("select d.id, d.name, d.id_player from deck d", iterFunc)
 	}
-
 	if err != nil {
 		return nil, err
 	}
