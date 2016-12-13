@@ -1227,7 +1227,7 @@ func (d *Deck) QueryByName(client raizel.Client) ([]Deck, error) {
 		}
 		return nil
 	}
-	err := client.Query("select d.id, d.name, d.id_player from deck d where d.name similar to $1", iterFunc, d.Name)
+	err := client.Query("select d.id, d.name, d.id_player from deck d where d.name ~* $1", iterFunc, d.Name)
 	if err != nil {
 		return nil, err
 	}
