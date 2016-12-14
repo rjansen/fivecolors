@@ -697,14 +697,15 @@ func (h AnonDeckHandler) QueryByName(w http.ResponseWriter, r *http.Request) err
 	queryParameters := r.URL.Query()
 	l.Infof("AnonDeckHandler.QueryByName: URI[%q] Query[%s] Parameters[%q]", r.URL.Path, queryName, queryParameters)
 
-	if queryName == "" {
-		return haki.Status(w, http.StatusOK)
-	}
-
 	var decks []data.Deck
 	err := raizel.Execute(
 		func(c raizel.Client) error {
-			queryDeck := data.Deck{Name: queryName}
+			var queryDeck data.Deck
+			if queryName == "" || queryName == "query" {
+				queryDeck = data.Deck{}
+			} else {
+				queryDeck = data.Deck{Name: queryName}
+			}
 			tmp, err := queryDeck.QueryByName(c)
 			if err == nil {
 				decks = tmp

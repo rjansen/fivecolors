@@ -1224,16 +1224,22 @@ func (d *Deck) QueryByName(client raizel.Client) ([]Deck, error) {
 		}
 		return nil
 	}
+	l.Info("data.QueryDecks", l.String("nameQuery", d.Name))
 	var err error
 	if strings.TrimSpace(d.Name) != "" {
+		l.Info("data.QueryByNameParameter", l.String("nameQuery", d.Name))
 		err = client.Query("select d.id, d.name, d.id_player from deck d where d.name ~* $1", iterFunc, d.Name)
 	} else {
+		l.Info("data.QueryAll")
 		err = client.Query("select d.id, d.name, d.id_player from deck d", iterFunc)
 	}
 	if err != nil {
 		return nil, err
 	}
-	l.Infof("ResultDecks=%+v", resultDecks)
+	l.Info("data.QueryDeckResults",
+		l.Int("deckLen", len(resultDecks)),
+		l.String("nameQuery", d.Name),
+	)
 	return resultDecks, nil
 }
 
