@@ -19,6 +19,7 @@ var (
 type Configuration struct {
 	Version     string          `mapstructure:"version"`
 	Environment string          `mapstructure:"environment"`
+	AssetDir    string          `mapstructure:"assetDir"`
 	DB          DBConfig        `mapstructure:"db"`
 	Handler     HandlerConfig   `mapstructure:"handler"`
 	L           l.Configuration `mapstructure:"l"`
@@ -28,8 +29,8 @@ type Configuration struct {
 
 func (c Configuration) String() string {
 	//return fmt.Sprintf("Configuration[Version=%v ProxyConfig=%v DBConfig=%v SecurityConfig=%v CacheConfig=%v LoggerConfig=%v]", c.Version, c.ProxyConfig, c.DBConfig, c.SecurityConfig, c.CacheConfig, c.LoggerConfig)
-	return fmt.Sprintf("Configuration Version=%s Environment=%s L=%s Handler=%s DB=%s Raizel=%s",
-		c.Version, c.Environment,
+	return fmt.Sprintf("Configuration Version=%s Environment=%s AssetDir=%s L=%s Handler=%s DB=%s Raizel=%s",
+		c.Version, c.Environment, c.AssetDir,
 		c.L.String(),
 		c.Handler.String(),
 		c.DB.String(),
