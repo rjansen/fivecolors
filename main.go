@@ -49,7 +49,7 @@ func main() {
 	// http.Handle("/inventory/", api.NewInventoryHandler())
 	// http.Handle("/deck/", api.NewDeckHandler())
 	http.HandleFunc("/api/card/", api.NewAnonCardHandler())
-	http.HandleFunc("/api/deck", api.NewAnonDeckHandler())
+	http.HandleFunc("/api/deck/", api.NewAnonDeckHandler())
 	http.Handle("/api/asset/", http.StripPrefix("/api/asset/", http.FileServer(http.Dir(config.Value.AssetDir))))
 
 	l.Info("FivecolorsStart",
