@@ -628,6 +628,54 @@ const (
 // 	return nil
 // }
 
+//NewAnonCardHandler creates a new unauthorized cardHandler instance
+func NewAnonCardHandler() http.HandlerFunc {
+	var cardHandler AnonCardHandler
+	return haki.Handler(haki.Log(haki.Error(cardHandler.ServeHTTP)))
+}
+
+//AnonCardHandler is the unsecure handler to get and post Decks
+type AnonCardHandler struct{}
+
+func (h AnonCardHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) error {
+	if r.Method == "GET" {
+		// isQuery := path.Base(path.Dir(r.URL.Path)) == "query"
+		// if isQuery {
+		// 	return h.QueryByName(w, r)
+		// }
+		return h.Read(w, r)
+	}
+	return haki.Status(w, http.StatusMethodNotAllowed)
+}
+
+func (h AnonCardHandler) Read(w http.ResponseWriter, r *http.Request) error {
+	readParameter := path.Base(r.URL.Path)
+	l.Infof("handler.Card.Read",
+		l.String("URI", r.URL.Path),
+		l.String("parameter", readParameter),
+	)
+	var card data.Card
+	var err error
+	if id, atoirErr := strconv.Atoi(readParameter); atoirErr == nil {
+		card.ID = id
+		err = raizel.Execute(card.ReadByID)
+	} else {
+		card.Name = readParameter
+		err = raizel.Execute(card.ReadByName)
+	}
+	if err != nil {
+		if err == raizel.ErrNotFound {
+			return haki.Status(w, http.StatusNotFound)
+		}
+		l.Error("handler.Card.ReadErr", l.String("parameter", readParameter), l.Err(err))
+		return haki.Status(w, http.StatusBadRequest)
+	}
+	if err != nil {
+		return haki.Status(w, http.StatusBadRequest)
+	}
+	return haki.JSON(w, http.StatusOK, card)
+}
+
 //NewAnonDeckHandler creates a new unauthorized deckHandler instance
 func NewAnonDeckHandler() http.HandlerFunc {
 	var deckHandler AnonDeckHandler

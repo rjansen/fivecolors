@@ -83,6 +83,7 @@ func closeDB(a Attachable) error {
 //Card represents the CARD entity
 type Card struct {
 	ID               int           `json:"id"`
+	MultiverseID     string        `json:"multiverseid"`
 	Index            string        `json:"index"`
 	Name             string        `json:"name"`
 	Label            string        `json:"label"`
@@ -196,6 +197,52 @@ func (c *Card) Read() error {
         where c.id = ?`
 	row := c.db.QueryRow(query, c.InventoryCard.IDInventory, c.ID, c.InventoryCard.IDInventory)
 	return c.Fetch(row)
+}
+
+//FetchByID fetchs the Row and sets the values into Card instance
+func (c *Card) FetchByID(fetchable raizel.Fetchable) error {
+	return fetchable.Scan(&c.ID, &c.MultiverseID, &c.Index, &c.Name, &c.Label, &c.Text,
+		&c.ManacostLabel, &c.CombatpowerLabel, &c.TypeLabel,
+		&c.IDRarity, &c.Flavor, &c.Artist, &c.Rate, &c.RateVotes, &c.IDAsset,
+		&c.Expansion.ID, &c.Expansion.Name, &c.Expansion.Label, &c.Expansion.IDAsset)
+}
+
+//ReadByID gets the entity representation from the database.
+//Card.ID must not empty to perform a Read operation
+func (c *Card) ReadByID(client raizel.Client) error {
+	if c.ID <= 0 {
+		return errors.New("data.Card.ReadErr: Message='Card.ID is empty'")
+	}
+	query :=
+		`
+		select c.id, c.multiverseid, c.multiverse_number, c.name, c.label, coalesce(c.text, ''),
+            coalesce(c.manacost_label, ''), coalesce(c.combatpower_label, ''), c.type_label,
+            c.id_rarity, coalesce(c.flavor, ''), c.artist, c.rate, c.rate_votes, c.id_asset,
+            e.id, e.name, e.label, a.id_asset
+        from card c
+            left join expansion e on c.id_expansion = e.id
+            left join expansion_asset a on a.id_expansion = e.id and a.id_rarity = c.id_rarity
+        where c.id = $1`
+	return client.QueryOne(query, c.FetchByID, c.ID)
+}
+
+//ReadByName gets the entity representation from the database.
+//Card.ID must not empty to perform a Read operation
+func (c *Card) ReadByName(client raizel.Client) error {
+	if strings.TrimSpace(c.Name) == "" {
+		return errors.New("data.Card.ReadErr: Message='Card.ID is empty'")
+	}
+	query :=
+		`
+		select c.id, c.multiverseid, c.multiverse_number, c.name, c.label, coalesce(c.text, ''),
+            coalesce(c.manacost_label, ''), coalesce(c.combatpower_label, ''), c.type_label,
+            c.id_rarity, coalesce(c.flavor, ''), c.artist, c.rate, c.rate_votes, c.id_asset,
+            e.id, e.name, e.label, a.id_asset
+        from card c
+            left join expansion e on c.id_expansion = e.id
+            left join expansion_asset a on a.id_expansion = e.id and a.id_rarity = c.id_rarity
+        where c.name = $1`
+	return client.QueryOne(query, c.FetchByID, c.Name)
 }
 
 //Query querys CARDs by restrictions and create a list of Cards references

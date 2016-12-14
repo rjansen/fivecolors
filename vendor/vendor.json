@@ -215,16 +215,16 @@
 			"revisionTime": "2016-12-13T13:10:22Z"
 		},
 		{
-			"checksumSHA1": "yMnS6ymCokqjubrEjJ89Im48uOc=",
+			"checksumSHA1": "n9FGz0N9+UcoF+Cma3HTWeJyvb8=",
 			"path": "github.com/rjansen/raizel",
-			"revision": "530adfdb38308b4e152fce22223093ca78e0b31d",
-			"revisionTime": "2016-12-13T13:15:44Z"
+			"revision": "050adc760ea0df5a40e75e5449cb04e8ae4b6cb0",
+			"revisionTime": "2016-12-14T12:31:14Z"
 		},
 		{
-			"checksumSHA1": "DoU8ITdG7e3SMrKrxkaarULdOtw=",
+			"checksumSHA1": "7Bm9VvbZ9jFLimzisBohr5anmlw=",
 			"path": "github.com/rjansen/raizel/sql",
-			"revision": "2a031c5afc1341a48cb9c3d537dbbbd1d0758e37",
-			"revisionTime": "2016-12-13T20:28:33Z"
+			"revision": "050adc760ea0df5a40e75e5449cb04e8ae4b6cb0",
+			"revisionTime": "2016-12-14T12:31:14Z"
 		},
 		{
 			"checksumSHA1": "zmC8/3V4ls53DJlNTKDZwPSC/dA=",
