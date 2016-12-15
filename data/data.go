@@ -245,6 +245,60 @@ func (c *Card) ReadByName(client raizel.Client) error {
 	return client.QueryOne(query, c.FetchByID, c.Name)
 }
 
+//QueryByID querys cards by dynamic restrictions
+func (c *Card) QueryByID(client raizel.Client, queryParameters map[string]interface{}, order string) ([]Card, error) {
+	parameterSize := len(queryParameters)
+	if parameterSize <= 0 {
+		return nil, errors.New("data.Card.QueryErr: Message='QueryParameter is empty'")
+	}
+	restrictions := make([]string, parameterSize)
+	values := make([]interface{}, parameterSize)
+	paramIndex := 0
+	for k, v := range queryParameters {
+		restrictions[paramIndex] = k
+		values[paramIndex] = v
+		paramIndex++
+	}
+	query :=
+		`
+            select c.id, c.multiverseid, c.multiverse_number, c.name, c.label, coalesce(c.text, ''),
+                coalesce(c.manacost_label, ''), coalesce(c.combatpower_label, ''), c.type_label,
+                c.id_rarity, coalesce(c.flavor, ''), c.artist, c.rate, c.rate_votes, c.id_asset,
+                e.id, e.name, e.label, a.id_asset
+            from card c
+                left join expansion e on c.id_expansion = e.id
+                left join expansion_asset a on a.id_expansion = e.id and a.id_rarity = c.id_rarity
+            where ` + strings.Join(restrictions, " and ")
+
+	if order != "" {
+		query += " order by " + order
+	} else {
+		query += " order by e.name, c.multiverse_number"
+	}
+
+	l.Debug("data.Card.Query",
+		l.String("Query", query),
+		l.Struct("Params", values),
+	)
+	var resultCards []Card
+	iterFunc := func(i raizel.Iterable) error {
+		for i.Next() {
+			var card Card
+			if fetchErr := card.FetchByID(i); fetchErr != nil {
+				return fetchErr
+			}
+			resultCards = append(resultCards, card)
+		}
+		return nil
+	}
+
+	queryErr := client.Query(query, iterFunc, values...)
+	if queryErr != nil {
+		return nil, queryErr
+	}
+	return resultCards, nil
+}
+
 //Query querys CARDs by restrictions and create a list of Cards references
 func (c *Card) Query(queryParameters map[string]interface{}, order string) ([]interface{}, error) {
 	if c.InventoryCard.IDInventory <= 0 {

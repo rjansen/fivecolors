@@ -5,6 +5,7 @@ import (
 	//"bytes"
 	// "encoding/json"
 	// "errors"
+	"fmt"
 	"net/http"
 	"path"
 	"strconv"
@@ -639,10 +640,10 @@ type AnonCardHandler struct{}
 
 func (h AnonCardHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) error {
 	if r.Method == "GET" {
-		// isQuery := path.Base(path.Dir(r.URL.Path)) == "query"
-		// if isQuery {
-		// 	return h.QueryByName(w, r)
-		// }
+		isQuery := path.Base(path.Dir(r.URL.Path)) == "query"
+		if isQuery {
+			return h.Query(w, r)
+		}
 		return h.Read(w, r)
 	}
 	return haki.Status(w, http.StatusMethodNotAllowed)
@@ -674,6 +675,90 @@ func (h AnonCardHandler) Read(w http.ResponseWriter, r *http.Request) error {
 		return haki.Status(w, http.StatusBadRequest)
 	}
 	return haki.JSON(w, http.StatusOK, card)
+}
+
+func (h AnonCardHandler) Query(w http.ResponseWriter, r *http.Request) error {
+	queryParameters := r.URL.Query()
+	l.Infof("AnonDeckHandler.Query: URL[%q] QueryParameters[%q]", r.URL.Path, queryParameters)
+
+	hydrate := queryParameters.Get("hydrate")
+	if hydrate == "" {
+		hydrate = "full"
+	}
+	if len(queryParameters) <= 0 {
+		//w.Header().Set("Content-Type", "application/json; charset=utf-8")
+		return haki.Status(w, http.StatusBadRequest)
+	}
+
+	regexName := queryParameters.Get("rx_name")
+	regexCost := queryParameters.Get("rx_cost")
+	notRegexCost := queryParameters.Get("nrx_cost")
+	regexType := queryParameters.Get("rx_type")
+	notRegexType := queryParameters.Get("nrx_type")
+	expansionParam := queryParameters.Get("e")
+	numberParam := queryParameters.Get("n")
+	stockQtdParam := queryParameters.Get("q")
+	order := queryParameters.Get("order")
+
+	queryRestrinctions := make(map[string]interface{})
+	idxParam := 0
+	if regexName != "" {
+		idxParam++
+		queryRestrinctions[fmt.Sprintf("c.name ~* $%d", idxParam)] = regexName
+	}
+	if regexCost != "" {
+		idxParam++
+		queryRestrinctions[fmt.Sprintf("c.manacost_label ~* $%d", idxParam)] = regexCost
+	}
+	if notRegexCost != "" {
+		idxParam++
+		queryRestrinctions[fmt.Sprintf("c.manacost_label not ~* $%d", idxParam)] = notRegexCost
+	}
+	if regexType != "" {
+		idxParam++
+		queryRestrinctions[fmt.Sprintf("c.type_label ~* $%d", idxParam)] = regexType
+	}
+	if notRegexType != "" {
+		idxParam++
+		queryRestrinctions[fmt.Sprintf("c.type_label not ~* $%d", idxParam)] = notRegexType
+	}
+	if expansionParam != "" {
+		if IDExpansion, convertErr := strconv.Atoi(expansionParam); convertErr == nil {
+			idxParam++
+			queryRestrinctions[fmt.Sprintf("c.id_expansion = $%d", idxParam)] = IDExpansion
+		} else {
+			l.Warnf("AnonDeckHandler.ExpansionParamErr: Parameter[%s] Error[%v]", expansionParam, convertErr)
+		}
+	}
+	if numberParam != "" {
+		idxParam++
+		queryRestrinctions[fmt.Sprintf("c.multiverse_number = $%d", idxParam)] = numberParam
+	}
+	if stockQtdParam != "" {
+		idxParam++
+		queryRestrinctions[fmt.Sprintf("coalesce(i.quantity, 0) >= $%d", idxParam)] = stockQtdParam
+	}
+	var cards []data.Card
+	err := raizel.Execute(
+		func(c raizel.Client) error {
+			var card data.Card
+			tmp, err := card.QueryByID(c, queryRestrinctions, order)
+			if err == nil {
+				cards = tmp
+			}
+			return err
+		},
+	)
+	if err != nil {
+		l.Errorf("AnonDeckHandler.QueryErr: Restrictions[%v] Err[%v]", queryRestrinctions, err)
+		return haki.Err(w, err)
+	}
+	cardsSize := len(cards)
+	l.Info("AnonDeckHandler.QueryResult",
+		l.Int("Cards.Len", cardsSize),
+		l.String("Hydrate", hydrate),
+	)
+	return haki.JSON(w, http.StatusOK, cards)
 }
 
 //NewAnonDeckHandler creates a new unauthorized deckHandler instance
@@ -723,7 +808,7 @@ func (h AnonDeckHandler) Persist(w http.ResponseWriter, r *http.Request) error {
 func (h AnonDeckHandler) Read(w http.ResponseWriter, r *http.Request) error {
 	readParameter := path.Base(r.URL.Path)
 	queryParameters := r.URL.Query()
-	l.Infof("AnonDeckHandler.Read: URI[%q] ReadParameter[%q] Parameters[%q]", r.URL.Path, readParameter, queryParameters)
+	l.Infof("h AnonDeckHandler.Read: URI[%q] ReadParameter[%q] Parameters[%q]", r.URL.Path, readParameter, queryParameters)
 
 	var deck data.Deck
 	var err error

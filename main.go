@@ -48,9 +48,13 @@ func main() {
 	// http.Handle("/asset/", api.NewGetAssetHandler())
 	// http.Handle("/inventory/", api.NewInventoryHandler())
 	// http.Handle("/deck/", api.NewDeckHandler())
-	http.HandleFunc("/api/card/", api.NewAnonCardHandler())
-	http.HandleFunc("/api/deck/", api.NewAnonDeckHandler())
-	http.Handle("/api/asset/", http.StripPrefix("/api/asset/", http.FileServer(http.Dir(config.Value.AssetDir))))
+	http.HandleFunc("/card/", api.NewAnonCardHandler())
+	http.HandleFunc("/deck/", api.NewAnonDeckHandler())
+	http.Handle("/asset/",
+		http.StripPrefix("/api/asset/",
+			http.FileServer(http.Dir(config.Value.AssetDir)),
+		),
+	)
 
 	l.Info("FivecolorsStart",
 		l.String("Version", config.Value.Version),
