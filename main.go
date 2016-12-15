@@ -51,7 +51,7 @@ func main() {
 	http.HandleFunc("/card/", api.NewAnonCardHandler())
 	http.HandleFunc("/deck/", api.NewAnonDeckHandler())
 	http.Handle("/asset/",
-		http.StripPrefix("/api/asset/",
+		http.StripPrefix("/asset/",
 			http.FileServer(http.Dir(config.Value.AssetDir)),
 		),
 	)
