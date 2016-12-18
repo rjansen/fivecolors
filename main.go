@@ -48,11 +48,17 @@ func main() {
 	// http.Handle("/asset/", api.NewGetAssetHandler())
 	// http.Handle("/inventory/", api.NewInventoryHandler())
 	// http.Handle("/deck/", api.NewDeckHandler())
-	http.HandleFunc("/card/", api.NewAnonCardHandler())
-	http.HandleFunc("/deck/", api.NewAnonDeckHandler())
-	http.Handle("/asset/",
-		http.StripPrefix("/asset/",
+	http.HandleFunc("/api/cards/", api.NewAnonCardHandler())
+	http.HandleFunc("/api/decks/", api.NewAnonDeckHandler())
+	http.Handle("/api/expansions/", api.NewAnonExpansionHandler())
+	http.Handle("/api/assets/",
+		http.StripPrefix("/api/assets/",
 			http.FileServer(http.Dir(config.Value.AssetDir)),
+		),
+	)
+	http.Handle("/web/",
+		http.StripPrefix("/web/",
+			http.FileServer(http.Dir(config.Value.WebDir)),
 		),
 	)
 

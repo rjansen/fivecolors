@@ -20,6 +20,7 @@ type Configuration struct {
 	Version     string          `mapstructure:"version"`
 	Environment string          `mapstructure:"environment"`
 	AssetDir    string          `mapstructure:"assetDir"`
+	WebDir      string          `mapstructure:"webDir"`
 	DB          DBConfig        `mapstructure:"db"`
 	Handler     HandlerConfig   `mapstructure:"handler"`
 	L           l.Configuration `mapstructure:"l"`

@@ -640,8 +640,9 @@ type AnonCardHandler struct{}
 
 func (h AnonCardHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) error {
 	if r.Method == "GET" {
-		isQuery := path.Base(path.Dir(r.URL.Path)) == "query"
-		if isQuery {
+		basePath, lastPath := path.Split(r.URL.Path)
+		l.Infof("AnonCardHandler.ServeHTTP: Path[%s] BasePath[%s] LastPath[%s]", r.URL.Path, basePath, lastPath)
+		if lastPath == "" {
 			return h.Query(w, r)
 		}
 		return h.Read(w, r)
@@ -681,13 +682,14 @@ func (h AnonCardHandler) Query(w http.ResponseWriter, r *http.Request) error {
 	queryParameters := r.URL.Query()
 	l.Infof("AnonDeckHandler.Query: URL[%q] QueryParameters[%q]", r.URL.Path, queryParameters)
 
-	hydrate := queryParameters.Get("hydrate")
-	if hydrate == "" {
-		hydrate = "full"
-	}
 	if len(queryParameters) <= 0 {
 		//w.Header().Set("Content-Type", "application/json; charset=utf-8")
 		return haki.Status(w, http.StatusBadRequest)
+	}
+
+	hydrate := queryParameters.Get("hydrate")
+	if hydrate == "" {
+		hydrate = "full"
 	}
 
 	regexName := queryParameters.Get("rx_name")
@@ -742,7 +744,7 @@ func (h AnonCardHandler) Query(w http.ResponseWriter, r *http.Request) error {
 	err := raizel.Execute(
 		func(c raizel.Client) error {
 			var card data.Card
-			tmp, err := card.QueryByID(c, queryRestrinctions, order)
+			tmp, err := card.QueryDynamic(c, queryRestrinctions, order)
 			if err == nil {
 				cards = tmp
 			}
@@ -772,9 +774,10 @@ type AnonDeckHandler struct{}
 
 func (h AnonDeckHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) error {
 	if r.Method == "GET" {
-		isQuery := path.Base(path.Dir(r.URL.Path)) == "query"
-		if isQuery {
-			return h.QueryByName(w, r)
+		basePath, lastPath := path.Split(r.URL.Path)
+		l.Infof("AnonDeckHandler.ServeHTTP: Path[%s] BasePath[%s] LastPath[%s]", r.URL.Path, basePath, lastPath)
+		if lastPath == "" {
+			return h.Query(w, r)
 		}
 		return h.Read(w, r)
 	} else if r.Method == "POST" {
@@ -793,7 +796,7 @@ func (h AnonDeckHandler) Persist(w http.ResponseWriter, r *http.Request) error {
 		return haki.Err(w, err)
 	}
 	isCreateRequest := deck.ID == 0
-	if err = raizel.Execute(deck.PersistV2); err != nil {
+	if err = raizel.Execute(deck.PersistByID); err != nil {
 		return haki.Err(w, err)
 	}
 	if isCreateRequest {
@@ -808,7 +811,7 @@ func (h AnonDeckHandler) Persist(w http.ResponseWriter, r *http.Request) error {
 func (h AnonDeckHandler) Read(w http.ResponseWriter, r *http.Request) error {
 	readParameter := path.Base(r.URL.Path)
 	queryParameters := r.URL.Query()
-	l.Infof("h AnonDeckHandler.Read: URI[%q] ReadParameter[%q] Parameters[%q]", r.URL.Path, readParameter, queryParameters)
+	l.Infof("AnonDeckHandler.Read: URI[%q] ReadParameter[%q] Parameters[%q]", r.URL.Path, readParameter, queryParameters)
 
 	var deck data.Deck
 	var err error
@@ -825,16 +828,16 @@ func (h AnonDeckHandler) Read(w http.ResponseWriter, r *http.Request) error {
 	return haki.JSON(w, http.StatusOK, deck)
 }
 
-func (h AnonDeckHandler) QueryByName(w http.ResponseWriter, r *http.Request) error {
-	queryName := path.Base(r.URL.Path)
+func (h AnonDeckHandler) Query(w http.ResponseWriter, r *http.Request) error {
 	queryParameters := r.URL.Query()
-	l.Infof("AnonDeckHandler.QueryByName: URI[%q] Query[%s] Parameters[%q]", r.URL.Path, queryName, queryParameters)
+	l.Infof("AnonDeckHandler.QueryByName: URI[%q] Parameters[%q]", r.URL.Path, queryParameters)
 
 	var decks []data.Deck
 	err := raizel.Execute(
 		func(c raizel.Client) error {
+			queryName := queryParameters.Get("rx_name")
 			var queryDeck data.Deck
-			if queryName == "" || queryName == "query" {
+			if queryName == "" {
 				queryDeck = data.Deck{}
 			} else {
 				queryDeck = data.Deck{Name: queryName}
@@ -850,4 +853,87 @@ func (h AnonDeckHandler) QueryByName(w http.ResponseWriter, r *http.Request) err
 		return haki.Err(w, err)
 	}
 	return haki.JSON(w, http.StatusOK, decks)
+}
+
+//NewAnonExpansionHandler creates a new unauthorized expansionHandler instance
+func NewAnonExpansionHandler() http.HandlerFunc {
+	var expansionHandler AnonExpansionHandler
+	return haki.Handler(haki.Log(haki.Error(expansionHandler.ServeHTTP)))
+}
+
+//AnonExpansionHandler is the unsecure handler to get and query Expansions
+type AnonExpansionHandler struct{}
+
+func (h AnonExpansionHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) error {
+	if r.Method == "GET" {
+		basePath, lastPath := path.Split(r.URL.Path)
+		l.Infof("AnonExpansionHandler.ServeHTTP: Path[%s] BasePath[%s] LastPath[%s]", r.URL.Path, basePath, lastPath)
+		if lastPath == "" {
+			return h.Query(w, r)
+		}
+		return h.Read(w, r)
+	}
+	return haki.Status(w, http.StatusMethodNotAllowed)
+}
+
+func (h AnonExpansionHandler) Read(w http.ResponseWriter, r *http.Request) error {
+	readParameter := path.Base(r.URL.Path)
+	queryParameters := r.URL.Query()
+	l.Infof("AnonExpansionHandler.Read: URI[%q] ReadParameter[%q] Parameters[%q]", r.URL.Path, readParameter, queryParameters)
+
+	var (
+		expansion data.Expansion
+		err       error
+	)
+	if id, atoirErr := strconv.Atoi(readParameter); atoirErr == nil {
+		expansion.ID = id
+		err = raizel.Execute(expansion.ReadByID)
+	} else {
+		expansion.Name = readParameter
+		err = raizel.Execute(expansion.ReadByName)
+	}
+	if err != nil {
+		return haki.Status(w, http.StatusNotFound)
+	}
+	return haki.JSON(w, http.StatusOK, expansion)
+}
+
+func (h AnonExpansionHandler) Query(w http.ResponseWriter, r *http.Request) error {
+	queryParameters := r.URL.Query()
+	l.Infof("GetHandler: URI[%s] QueryParameters[%q]", r.URL.Path, queryParameters)
+
+	hydrate := queryParameters.Get("hydrate")
+	if hydrate == "" {
+		hydrate = "full"
+	}
+	regexName := queryParameters.Get("rx_name")
+	order := queryParameters.Get("order")
+
+	queryRestrinctions := make(map[string]interface{})
+	if regexName != "" {
+		queryRestrinctions["e.name ~* $1"] = regexName
+	}
+	if order != "" {
+		order = "c.name"
+	}
+	var (
+		expansion  data.Expansion
+		expansions []data.Expansion
+	)
+	err := raizel.Execute(
+		func(c raizel.Client) error {
+			tmp, err := expansion.QueryDynamic(c, queryRestrinctions, order)
+			if err != nil {
+				return err
+			}
+			expansions = tmp
+			return nil
+		},
+	)
+	if err != nil {
+		return haki.Err(w, err)
+	}
+	expansionSize := len(expansions)
+	l.Debugf("QueryExpansionHandler.QueryExpansions: Expansions.Len[%v] Hydrate[%s]", expansionSize, hydrate)
+	return haki.JSON(w, http.StatusOK, expansions)
 }

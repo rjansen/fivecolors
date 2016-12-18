@@ -1,6 +1,7 @@
 version: "0.0.1-young"
 environment: "local"
 assetDir: "var/asset"
+webDir: "web"
 
 l:
     provider: "logrus"
