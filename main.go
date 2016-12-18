@@ -56,10 +56,8 @@ func main() {
 			http.FileServer(http.Dir(config.Value.AssetDir)),
 		),
 	)
-	http.Handle("/web/",
-		http.StripPrefix("/web/",
-			http.FileServer(http.Dir(config.Value.WebDir)),
-		),
+	http.Handle("/",
+		http.FileServer(http.Dir(config.Value.WebDir)),
 	)
 
 	l.Info("FivecolorsStart",

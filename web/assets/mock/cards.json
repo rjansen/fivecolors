@@ -1,0 +1,16 @@
+[
+    {
+        "index": 5118,
+        "name": "Mind Rot",
+        "label": "Mind Rot - (3.480/50)",
+        "manacostLabel": "2, Black",
+        "text": "Target player discards two cards."
+    },
+    {
+        "index": 9266,
+        "name": "Read the Bones",
+        "label": "Read the Bones - (3.542/96)",
+        "manacostLabel": "2, Black",
+        "text": "Scry 2, then draw two cards. You lose 2 life. <i>(To scry 2, look at the top two cards of your library, then put any number of them on the bottom of your library and the rest on top in any order.)</i>"
+    }
+]
