@@ -1043,7 +1043,7 @@ type Deck struct {
 	Name        string `json:"name"`
 	IDPlayer    int    `json:"idPlayer,omitempty"`
 	IDInventory int    `json:"idInventory,omitempty"`
-	Cards       []Card `json:"cards,omitempty"`
+	Cards       []Card `json:"cards"`
 
 	//db is a transient pointer to database connection
 	db *sql.DB
