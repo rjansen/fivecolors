@@ -1,20 +1,17 @@
 package main
 
 import (
-	"net/http"
-
 	"github.com/rjansen/fivecolors/api"
-	// "github.com/rjansen/fivecolors/data"
 	"github.com/rjansen/fivecolors/config"
 	"github.com/rjansen/l"
-	// "github.com/rjansen/migi"
 	raizelSQL "github.com/rjansen/raizel/sql"
+	"net/http"
 	//"github.com/rjansen/avalon/identity"
-	_ "github.com/go-sql-driver/mysql"
+	// _ "github.com/go-sql-driver/mysql"
 	_ "github.com/lib/pq"
 )
 
-func main() {
+func init() {
 	var err error
 	if err = config.Setup(); err != nil {
 		panic(err)
@@ -24,11 +21,6 @@ func main() {
 		panic(err)
 	}
 
-	// if err = data.Setup(configuration.DB); err != nil {
-	// 	l.Panic("FivecolorsSetupError", l.Err(err))
-	// }
-	// defer data.Close()
-
 	if err = raizelSQL.Setup(&config.Value.Raizel); err != nil {
 		l.Panic("5colors.RaizelSetupError", l.Err(err))
 	}
@@ -36,18 +28,11 @@ func main() {
 	// if err = identity.Setup(&configuration.Identity); err != nil {
 	// 	l.Panic("IdentitySetupError", l.Err(err))
 	// }
+}
 
-	// if err = api.Setup(*configuration); err != nil {
-	// 	l.Panic("ApiSetupError", l.Err(err))
-	// }
-
+func main() {
 	// http.Handle("/identity/", security.NewIdentityHandler())
 	// http.Handle("/player/", api.NewGetPlayerHandler())
-	// http.Handle("/card/", api.NewQueryCardHandler())
-	// http.Handle("/expansion/", api.NewQueryExpansionHandler())
-	// http.Handle("/asset/", api.NewGetAssetHandler())
-	// http.Handle("/inventory/", api.NewInventoryHandler())
-	// http.Handle("/deck/", api.NewDeckHandler())
 	http.HandleFunc("/api/cards/", api.NewAnonCardHandler())
 	http.HandleFunc("/api/decks/", api.NewAnonDeckHandler())
 	http.HandleFunc("/api/expansions/", api.NewAnonExpansionHandler())
@@ -66,7 +51,7 @@ func main() {
 		l.String("HandlerVersion", config.Value.Handler.Version),
 		l.String("BindAddress", config.Value.Handler.BindAddress()),
 	)
-	err = http.ListenAndServe(config.Value.Handler.BindAddress(), nil)
+	err := http.ListenAndServe(config.Value.Handler.BindAddress(), nil)
 	if err != nil {
 		panic(err)
 	}

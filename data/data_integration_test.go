@@ -32,16 +32,7 @@ func init() {
 }
 
 func setup() error {
-	setupErr := data.Setup(
-		config.DBConfig{
-			Driver:   "mysql",
-			URL:      "tcp(127.0.0.1:3306)/fivecolors",
-			Username: "fivecolors",
-			Password: "fivecolors",
-		},
-	)
-
-	setupErr = raizelSQL.Setup(
+	setupErr := raizelSQL.Setup(
 		&raizelSQL.Configuration{
 			Driver:    "mysql",
 			URL:       "tcp(127.0.0.1:3306)/fivecolors",

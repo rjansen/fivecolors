@@ -37,38 +37,32 @@ func (q *CardQuery) Build() error {
 		idxParam++
 		q.Restrictions = append(q.Restrictions, fmt.Sprintf("c.name ~* $%d", idxParam))
 		q.Values = append(q.Values, q.RegexName)
-		// queryRestrinctions[fmt.Sprintf("c.name ~* $%d", idxParam)] = regexName
 	}
 	if q.RegexCost != "" {
 		idxParam++
 		q.Restrictions = append(q.Restrictions, fmt.Sprintf("c.manacost_label ~* $%d", idxParam))
 		q.Values = append(q.Values, q.RegexCost)
-		// queryRestrinctions[fmt.Sprintf("c.manacost_label ~* $%d", idxParam)] = regexCost
 	}
 	if q.NotRegexCost != "" {
 		idxParam++
 		q.Restrictions = append(q.Restrictions, fmt.Sprintf("c.manacost_label not ~* $%d", idxParam))
 		q.Values = append(q.Values, q.NotRegexCost)
-		// queryRestrinctions[fmt.Sprintf("c.manacost_label not ~* $%d", idxParam)] = notRegexCost
 	}
 	if q.RegexType != "" {
 		idxParam++
 		q.Restrictions = append(q.Restrictions, fmt.Sprintf("c.type_label ~* $%d", idxParam))
 		q.Values = append(q.Values, q.RegexType)
-		// queryRestrinctions[fmt.Sprintf("c.type_label ~* $%d", idxParam)] = regexType
 	}
 	if q.NotRegexType != "" {
 		idxParam++
 		q.Restrictions = append(q.Restrictions, fmt.Sprintf("c.type_label not ~* $%d", idxParam))
 		q.Values = append(q.Values, q.NotRegexType)
-		// queryRestrinctions[fmt.Sprintf("c.type_label not ~* $%d", idxParam)] = notRegexType
 	}
 	if q.IDExpansion != "" {
 		if idExpansion, convertErr := strconv.Atoi(q.IDExpansion); convertErr == nil {
 			idxParam++
 			q.Restrictions = append(q.Restrictions, fmt.Sprintf("c.id_expansion = $%d", idxParam))
 			q.Values = append(q.Values, idExpansion)
-			// queryRestrinctions[fmt.Sprintf("c.id_expansion = $%d", idxParam)] = IDExpansion
 		} else {
 			l.Warn("AnonDeckHandler.ExpansionParamErr", l.String("Parameter", q.IDExpansion), l.Err(convertErr))
 		}
@@ -77,13 +71,11 @@ func (q *CardQuery) Build() error {
 		idxParam++
 		q.Restrictions = append(q.Restrictions, fmt.Sprintf("c.multiverse_number = $%d", idxParam))
 		q.Values = append(q.Values, q.Number)
-		// queryRestrinctions[fmt.Sprintf("c.multiverse_number = $%d", idxParam)] = numberParam
 	}
 	if q.InventoryQtd != "" {
 		idxParam++
 		q.Restrictions = append(q.Restrictions, fmt.Sprintf("coalesce(i.quantity, 0) >= $%d", idxParam))
 		q.Values = append(q.Values, q.InventoryQtd)
-		// queryRestrinctions[fmt.Sprintf("coalesce(i.quantity, 0) >= $%d", idxParam)] = stockQtdParam
 	}
 
 	query :=
@@ -117,7 +109,7 @@ func (q *CardQuery) Fetch(i raizel.Iterable) error {
 	var resultCards []Card
 	for i.Next() {
 		var card Card
-		if fetchErr := card.FetchByID(i); fetchErr != nil {
+		if fetchErr := card.FetchFull(i); fetchErr != nil {
 			return fetchErr
 		}
 		resultCards = append(resultCards, card)

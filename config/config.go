@@ -21,7 +21,6 @@ type Configuration struct {
 	Environment string          `mapstructure:"environment"`
 	AssetDir    string          `mapstructure:"assetDir"`
 	WebDir      string          `mapstructure:"webDir"`
-	DB          DBConfig        `mapstructure:"db"`
 	Handler     HandlerConfig   `mapstructure:"handler"`
 	L           l.Configuration `mapstructure:"l"`
 	// Identity    identity.Configuration  `mapstructure:"identity"`
@@ -29,12 +28,10 @@ type Configuration struct {
 }
 
 func (c Configuration) String() string {
-	//return fmt.Sprintf("Configuration[Version=%v ProxyConfig=%v DBConfig=%v SecurityConfig=%v CacheConfig=%v LoggerConfig=%v]", c.Version, c.ProxyConfig, c.DBConfig, c.SecurityConfig, c.CacheConfig, c.LoggerConfig)
-	return fmt.Sprintf("Configuration Version=%s Environment=%s AssetDir=%s L=%s Handler=%s DB=%s Raizel=%s",
+	return fmt.Sprintf("Configuration Version=%s Environment=%s AssetDir=%s L=%s Handler=%s Raizel=%s",
 		c.Version, c.Environment, c.AssetDir,
 		c.L.String(),
 		c.Handler.String(),
-		c.DB.String(),
 		// c.Identity.String(),
 		c.Raizel.String(),
 	)
@@ -54,10 +51,6 @@ func Get() *Configuration {
 
 //Setup initializes the package
 func Setup() error {
-	// err := migi.Unmarshal(&Value)
-	// if err != nil {
-	// 	return err
-	// }
 	migi.SetEnvPrefix("")
 	migi.BindEnv("handler.port", "PORT")
 	migi.BindEnv("raizel.url", "DATABASE_URL")
