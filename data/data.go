@@ -205,7 +205,8 @@ func (c *Card) FetchByID(fetchable raizel.Fetchable) error {
 	return fetchable.Scan(&c.ID, &c.MultiverseID, &c.Index, &c.Name, &c.Label, &c.Text,
 		&c.ManacostLabel, &c.CombatpowerLabel, &c.TypeLabel,
 		&c.IDRarity, &c.Flavor, &c.Artist, &c.Rate, &c.RateVotes, &c.IDAsset,
-		&c.Expansion.ID, &c.Expansion.Name, &c.Expansion.Label, &c.Expansion.IDAsset)
+		&c.Expansion.ID, &c.Expansion.Name, &c.Expansion.Label, &c.Expansion.IDAsset,
+		&c.InventoryCard.IDInventory, &c.InventoryCard.Quantity)
 }
 
 //ReadByID gets the entity representation from the database.
@@ -219,10 +220,12 @@ func (c *Card) ReadByID(client raizel.Client) error {
 		select c.id, c.multiverseid, c.multiverse_number, c.name, c.label, coalesce(c.text, ''),
             coalesce(c.manacost_label, ''), coalesce(c.combatpower_label, ''), c.type_label,
             c.id_rarity, coalesce(c.flavor, ''), c.artist, c.rate, c.rate_votes, c.id_asset,
-            e.id, e.name, e.label, a.id_asset
+            e.id, e.name, e.label, a.id_asset,
+            coalesce(i.id_inventory, 0), coalesce(i.quantity, 0)
         from card c
             left join expansion e on c.id_expansion = e.id
             left join expansion_asset a on a.id_expansion = e.id and a.id_rarity = c.id_rarity
+            left join inventory_card i on i.id_inventory = 0 and i.id_card = c.id
         where c.id = $1`
 	return client.QueryOne(query, c.FetchByID, c.ID)
 }
@@ -238,15 +241,17 @@ func (c *Card) ReadByName(client raizel.Client) error {
 		select c.id, c.multiverseid, c.multiverse_number, c.name, c.label, coalesce(c.text, ''),
             coalesce(c.manacost_label, ''), coalesce(c.combatpower_label, ''), c.type_label,
             c.id_rarity, coalesce(c.flavor, ''), c.artist, c.rate, c.rate_votes, c.id_asset,
-            e.id, e.name, e.label, a.id_asset
+            e.id, e.name, e.label, a.id_asset,
+            coalesce(i.id_inventory, 0), coalesce(i.quantity, 0)
         from card c
             left join expansion e on c.id_expansion = e.id
             left join expansion_asset a on a.id_expansion = e.id and a.id_rarity = c.id_rarity
+            left join inventory_card i on i.id_inventory = 0 and i.id_card = c.id
         where c.name = $1`
 	return client.QueryOne(query, c.FetchByID, c.Name)
 }
 
-//QueryByID querys cards by dynamic restrictions
+//QueryDynamic querys cards by dynamic restrictions
 func (c *Card) QueryDynamic(client raizel.Client, queryParameters map[string]interface{}, order string) ([]Card, error) {
 	parameterSize := len(queryParameters)
 	if parameterSize <= 0 {
@@ -256,6 +261,10 @@ func (c *Card) QueryDynamic(client raizel.Client, queryParameters map[string]int
 	values := make([]interface{}, parameterSize)
 	paramIndex := 0
 	for k, v := range queryParameters {
+		l.Debug("QueryDynamic.AddRestriction",
+			l.String("Restriction", k),
+			l.Struct("Param", v),
+		)
 		restrictions[paramIndex] = k
 		values[paramIndex] = v
 		paramIndex++
@@ -265,10 +274,12 @@ func (c *Card) QueryDynamic(client raizel.Client, queryParameters map[string]int
             select c.id, c.multiverseid, c.multiverse_number, c.name, c.label, coalesce(c.text, ''),
                 coalesce(c.manacost_label, ''), coalesce(c.combatpower_label, ''), c.type_label,
                 c.id_rarity, coalesce(c.flavor, ''), c.artist, c.rate, c.rate_votes, c.id_asset,
-                e.id, e.name, e.label, a.id_asset
+                e.id, e.name, e.label, a.id_asset,
+				coalesce(i.id_inventory, 0), coalesce(i.quantity, 0)
             from card c
                 left join expansion e on c.id_expansion = e.id
                 left join expansion_asset a on a.id_expansion = e.id and a.id_rarity = c.id_rarity
+				left join inventory_card i on i.id_inventory = 0 and i.id_card = c.id
             where ` + strings.Join(restrictions, " and ")
 
 	if order != "" {
@@ -277,7 +288,7 @@ func (c *Card) QueryDynamic(client raizel.Client, queryParameters map[string]int
 		query += " order by e.name, c.multiverse_number"
 	}
 
-	l.Debug("data.Card.Query",
+	l.Debug("data.Card.QueryDynamic",
 		l.String("Query", query),
 		l.Struct("Params", values),
 	)
@@ -298,6 +309,19 @@ func (c *Card) QueryDynamic(client raizel.Client, queryParameters map[string]int
 		return nil, queryErr
 	}
 	return resultCards, nil
+}
+
+//QueryRaizel querys cards by dynamic restrictions
+func (c Card) QueryRaizel(client raizel.Client, args ...interface{}) error {
+	builder := args[0].(*CardQuery)
+	if err := builder.Build(); err != nil {
+		return err
+	}
+	queryErr := client.Query(builder.SQL, builder.Fetch, builder.Values...)
+	if queryErr != nil {
+		return queryErr
+	}
+	return nil
 }
 
 //Query querys CARDs by restrictions and create a list of Cards references
@@ -430,65 +454,11 @@ func (e *Expansion) Read() error {
 	return e.Fetch(row)
 }
 
-//Query querys CARDs by restrictions and create a list of Cards references
-func (e *Expansion) Query(queryParameters map[string]interface{}, order string) ([]interface{}, error) {
-	var parameterSize int
-	if queryParameters == nil {
-		parameterSize = 0
-	} else {
-		parameterSize = len(queryParameters)
-	}
-	restrictions := make([]string, parameterSize)
-	values := make([]interface{}, parameterSize)
-	if parameterSize > 0 {
-		paramIndex := 0
-		for k, v := range queryParameters {
-			restrictions[paramIndex] = k
-			values[paramIndex] = v
-			paramIndex++
-		}
-	}
-	query :=
-		`
-        select e.id, e.name, e.label, a.id_asset
-		from expansion e
-        left join expansion_asset a on e.id = a.id_expansion and (a.id_rarity = 0 or a.id_rarity = 4)
-        `
-	if len(restrictions) > 0 {
-		query += "where " + strings.Join(restrictions, " and ") + "\n"
-	}
-
-	if order != "" {
-		query += " order by " + order
-	} else {
-		query += " order by e.name"
-	}
-
-	l.Debugf("Expansion.Query: Query=%v Parameters=%v", query, values)
-	if err := e.Attach(); err != nil {
-		return nil, err
-	}
-	defer closeDB(e)
-	rows, queryErr := e.db.Query(query, values...)
-	if queryErr != nil {
-		return nil, queryErr
-	}
-	//Limit the result
-	//expansions := make([]interface{}, 0)
-	expansions := []interface{}{}
-	//var expansions []interface{}
-	for rows.Next() {
-		nextExpansion := Expansion{}
-		if err := nextExpansion.Fetch(rows); err != nil {
-			return nil, err
-		}
-		expansions = append(expansions, nextExpansion)
-	}
-	return expansions, nil
+func (e *Expansion) FetchSmall(fetchable raizel.Fetchable) error {
+	return fetchable.Scan(&e.ID, &e.Name, &e.IDAsset)
 }
 
-//FetchByID fetchs the Row and sets the values into Expansion instance
-func (e *Expansion) FetchByID(fetchable raizel.Fetchable) error {
+func (e *Expansion) FetchFull(fetchable raizel.Fetchable) error {
 	return fetchable.Scan(&e.ID, &e.Name, &e.Label, &e.IDAsset)
 }
 
@@ -503,7 +473,7 @@ func (e *Expansion) ReadByID(client raizel.Client) error {
 		from expansion e
             left join expansion_asset a on e.id = a.id_expansion and (a.id_rarity = 0 or a.id_rarity = 4)
 		where e.id = $1`
-	return client.QueryOne(query, e.FetchByID, e.ID)
+	return client.QueryOne(query, e.FetchFull, e.ID)
 }
 
 //ReadByName gets the entity representation from the database.
@@ -517,61 +487,19 @@ func (e *Expansion) ReadByName(client raizel.Client) error {
 		from expansion e
             left join expansion_asset a on e.id = a.id_expansion and (a.id_rarity = 0 or a.id_rarity = 4)
 		where e.name = $1`
-	return client.QueryOne(query, e.FetchByID, e.Name)
+	return client.QueryOne(query, e.FetchFull, e.Name)
 }
 
-//QueryDynamic query the Expansions database with dynamic restrictions
-func (e Expansion) QueryDynamic(client raizel.Client, queryParameters map[string]interface{}, order string) ([]Expansion, error) {
-	var parameterSize int
-	if queryParameters == nil {
-		parameterSize = 0
-	} else {
-		parameterSize = len(queryParameters)
+func (e Expansion) Query(client raizel.Client, args ...interface{}) error {
+	builder := args[0].(*ExpansionQuery)
+	if err := builder.Build(); err != nil {
+		return err
 	}
-	restrictions := make([]string, parameterSize)
-	values := make([]interface{}, parameterSize)
-	if parameterSize > 0 {
-		paramIndex := 0
-		for k, v := range queryParameters {
-			restrictions[paramIndex] = k
-			values[paramIndex] = v
-			paramIndex++
-		}
-	}
-	query :=
-		`
-        select e.id, e.name, e.label, a.id_asset
-		from expansion e
-        left join expansion_asset a on e.id = a.id_expansion and (a.id_rarity = 0 or a.id_rarity = 4)
-        `
-	if len(restrictions) > 0 {
-		query += "where " + strings.Join(restrictions, " and ") + "\n"
-	}
-
-	if order != "" {
-		query += " order by " + order
-	} else {
-		query += " order by e.name"
-	}
-
-	l.Debug("data.Expansion.Query", l.String("Query", query), l.Struct("Params", values))
-	var resultExpansions []Expansion
-	iterFunc := func(i raizel.Iterable) error {
-		for i.Next() {
-			var expansion Expansion
-			if fetchErr := expansion.FetchByID(i); fetchErr != nil {
-				return fetchErr
-			}
-			resultExpansions = append(resultExpansions, expansion)
-		}
-		return nil
-	}
-
-	queryErr := client.Query(query, iterFunc, values...)
+	queryErr := client.Query(builder.SQL, builder.Fetch, builder.Values...)
 	if queryErr != nil {
-		return nil, queryErr
+		return queryErr
 	}
-	return resultExpansions, nil
+	return nil
 }
 
 //Marshal writes a json representation of Expansion
@@ -932,6 +860,48 @@ func (i *Inventory) Persist() error {
 	return nil
 }
 
+//PersistByID persists the inventory struct
+func (i *Inventory) PersistByID(client raizel.Client) error {
+	if i.IDPlayer > 0 {
+		return errors.New("data.Inventory.UpdateError: Message='Inventory.IDPlayer is not zero'")
+	}
+	if i.ID > 0 {
+		return errors.New("data.Inventory.UpdateError: Message='Inventory.ID is not zero'")
+	}
+
+	insertCardQuery :=
+		`insert into inventory_card (id_inventory, id_card, quantity)
+        values ($1, $2, $3)`
+	updateCardQuery :=
+		`update inventory_card
+            set quantity = $1
+        where id_inventory = $2 and id_card = $3`
+
+	for _, card := range i.Cards {
+		_, insertErr := client.Exec(insertCardQuery, i.ID, card.ID, card.InventoryCard.Quantity)
+		if insertErr != nil {
+			l.Error("Inventory.InsertCardEx", l.Err(insertErr))
+			if !primaryKeyViolationByID.MatchString(insertErr.Error()) {
+				return insertErr
+			}
+			updateResult, updateErr := client.Exec(updateCardQuery, card.InventoryCard.Quantity, i.ID, card.ID)
+			if updateErr != nil {
+				return updateErr
+			}
+			rowsUpdated, err := updateResult.RowsAffected()
+			if err != nil {
+				l.Errorf("Inventory.UpdateGetRowsAffectedEx: Message='%v'", err.Error())
+			} else {
+				if rowsUpdated != 1 {
+					l.Errorf("Inventory.UpdateMultipleEx: Message='%d Card Records was update for Inventory.ID=%d'", rowsUpdated, i.ID)
+				}
+			}
+		}
+	}
+	l.Infof("Inventory.Persisted: ID=%v IDPlayer=%v", i.ID, i.IDPlayer)
+	return nil
+}
+
 //Delete deletes the INVENTORY record references to Inventory
 func (i *Inventory) Delete() error {
 	i.Attach()
@@ -1253,16 +1223,10 @@ func (d *Deck) ReadCards(page int) error {
 	return nil
 }
 
-//FetchByID fetchs the Row and sets the values into Deck instance
-func (d *Deck) FetchByID(fetchable raizel.Fetchable) error {
+func (d *Deck) FetchSmall(fetchable raizel.Fetchable) error {
 	return fetchable.Scan(&d.ID, &d.Name, &d.IDPlayer)
 }
 
-// func (d *Deck) PersistV2(client raizel.Client) error {
-// 	return errors.New("NotImplementedErr")
-// }
-
-//PersistByID persists the  Deck instance into database
 func (d *Deck) PersistByID(client raizel.Client) error {
 	if d.Name == "" {
 		return errors.New("data.Deck.PersistError: Message='Deck.Name is empty'")
@@ -1270,8 +1234,6 @@ func (d *Deck) PersistByID(client raizel.Client) error {
 
 	if d.ID == 0 {
 		fetchID := func(f raizel.Fetchable) error {
-			// d.ID = int(createdID)
-			// var newID int64
 			return f.Scan(&d.ID)
 		}
 		createErr := client.QueryOne("insert into deck (id, name, id_player) values (nextval('sq_deck'), $1, $2) returning id", fetchID, d.Name, d.IDPlayer)
@@ -1354,7 +1316,7 @@ func (d *Deck) ReadByID(client raizel.Client) error {
 	if d.ID <= 0 {
 		return errors.New("data.Asset.ReadByIDError: Message='Deck.ID is empty'")
 	}
-	err := client.QueryOne("select d.id, d.name, d.id_player from deck d where d.id = $1", d.FetchByID, d.ID)
+	err := client.QueryOne("select d.id, d.name, d.id_player from deck d where d.id = $1", d.FetchSmall, d.ID)
 	if err != nil {
 		return err
 	}
@@ -1366,7 +1328,7 @@ func (d *Deck) ReadByName(client raizel.Client) error {
 	if strings.TrimSpace(d.Name) == "" {
 		return errors.New("data.Deck.ReadByNameErr: Message='Deck.Name is empty'")
 	}
-	err := client.QueryOne("select d.id, d.name, d.id_player from deck d where d.name = $1", d.FetchByID, d.Name)
+	err := client.QueryOne("select d.id, d.name, d.id_player from deck d where d.name = $1", d.FetchSmall, d.Name)
 	if err != nil {
 		return err
 	}
@@ -1416,94 +1378,16 @@ func (d *Deck) ReadCardsByID(client raizel.Client, page int) error {
 	return nil
 }
 
-func (d *Deck) QueryByName(client raizel.Client) ([]Deck, error) {
-	var resultDecks []Deck
-	iterFunc := func(i raizel.Iterable) error {
-		for i.Next() {
-			var deck Deck
-			if fetchErr := deck.FetchByID(i); fetchErr != nil {
-				return fetchErr
-			}
-			resultDecks = append(resultDecks, deck)
-		}
-		return nil
+func (d Deck) Query(client raizel.Client, args ...interface{}) error {
+	builder := args[0].(*DeckQuery)
+	if err := builder.Build(); err != nil {
+		return err
 	}
-	l.Info("data.QueryDecks", l.String("nameQuery", d.Name))
-	var err error
-	if strings.TrimSpace(d.Name) != "" {
-		l.Info("data.QueryByNameParameter", l.String("nameQuery", d.Name))
-		err = client.Query("select d.id, d.name, d.id_player from deck d where d.name ~* $1", iterFunc, d.Name)
-	} else {
-		l.Info("data.QueryAll")
-		err = client.Query("select d.id, d.name, d.id_player from deck d", iterFunc)
-	}
-	if err != nil {
-		return nil, err
-	}
-	l.Info("data.QueryDeckResults",
-		l.Int("deckLen", len(resultDecks)),
-		l.String("nameQuery", d.Name),
-	)
-	return resultDecks, nil
-}
-
-//Query querys DECKs by restrictions and create a list of Decks references
-func (d *Deck) Query(queryParameters map[string]interface{}, order string) ([]interface{}, error) {
-	if d.IDPlayer <= 0 {
-		return nil, errors.New("data.Deck.ReadCardsError: Message='Deck.IDPlayer is empty'")
-	}
-	var parameterSize int
-	if queryParameters == nil {
-		parameterSize = 0
-	} else {
-		parameterSize = len(queryParameters)
-	}
-	restrictions := make([]string, parameterSize)
-	values := make([]interface{}, parameterSize)
-	if parameterSize > 0 {
-		paramIndex := 0
-		for k, v := range queryParameters {
-			restrictions[paramIndex] = k
-			values[paramIndex] = v
-			paramIndex++
-		}
-	}
-	query :=
-		`
-    select d.id, d.name, d.id_player from deck d where d.id_player = ?
-    `
-	if len(restrictions) > 0 {
-		query += " and " + strings.Join(restrictions, " and ") + "\n"
-	}
-
-	if order != "" {
-		query += "order by " + order
-	} else {
-		query += "order by d.id"
-	}
-
-	values = append([]interface{}{d.IDPlayer}, values...)
-	l.Debugf("Deck.Query: Query=%v Parameters=%v", query, values)
-	if err := d.Attach(); err != nil {
-		return nil, err
-	}
-	defer closeDB(d)
-	rows, queryErr := d.db.Query(query, values...)
+	queryErr := client.Query(builder.SQL, builder.Fetch, builder.Values...)
 	if queryErr != nil {
-		return nil, queryErr
+		return queryErr
 	}
-	//Limit the result
-	//decks := make([]interface{}, 0)
-	decks := []interface{}{}
-	//var decks []interface{}
-	for rows.Next() {
-		nextDeck := Deck{}
-		if err := nextDeck.Fetch(rows); err != nil {
-			return nil, err
-		}
-		decks = append(decks, nextDeck)
-	}
-	return decks, nil
+	return nil
 }
 
 //Marshal writes a json representation of Deck

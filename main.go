@@ -50,7 +50,8 @@ func main() {
 	// http.Handle("/deck/", api.NewDeckHandler())
 	http.HandleFunc("/api/cards/", api.NewAnonCardHandler())
 	http.HandleFunc("/api/decks/", api.NewAnonDeckHandler())
-	http.Handle("/api/expansions/", api.NewAnonExpansionHandler())
+	http.HandleFunc("/api/expansions/", api.NewAnonExpansionHandler())
+	http.HandleFunc("/api/inventories/", api.NewAnonInventoryHandler())
 	http.Handle("/api/assets/",
 		http.StripPrefix("/api/assets/",
 			http.FileServer(http.Dir(config.Value.AssetDir)),

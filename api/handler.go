@@ -5,7 +5,7 @@ import (
 	//"bytes"
 	// "encoding/json"
 	// "errors"
-	"fmt"
+	// "fmt"
 	"net/http"
 	"path"
 	"strconv"
@@ -631,14 +631,13 @@ const (
 
 //NewAnonCardHandler creates a new unauthorized cardHandler instance
 func NewAnonCardHandler() http.HandlerFunc {
-	var cardHandler AnonCardHandler
+	var cardHandler CardHandler
 	return haki.Handler(haki.Log(haki.Error(cardHandler.ServeHTTP)))
 }
 
-//AnonCardHandler is the unsecure handler to get and post Decks
-type AnonCardHandler struct{}
+type CardHandler struct{}
 
-func (h AnonCardHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) error {
+func (h CardHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) error {
 	if r.Method == "GET" {
 		basePath, lastPath := path.Split(r.URL.Path)
 		l.Infof("AnonCardHandler.ServeHTTP: Path[%s] BasePath[%s] LastPath[%s]", r.URL.Path, basePath, lastPath)
@@ -650,7 +649,7 @@ func (h AnonCardHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) error
 	return haki.Status(w, http.StatusMethodNotAllowed)
 }
 
-func (h AnonCardHandler) Read(w http.ResponseWriter, r *http.Request) error {
+func (h CardHandler) Read(w http.ResponseWriter, r *http.Request) error {
 	readParameter := path.Base(r.URL.Path)
 	l.Infof("handler.Card.Read",
 		l.String("URI", r.URL.Path),
@@ -678,101 +677,56 @@ func (h AnonCardHandler) Read(w http.ResponseWriter, r *http.Request) error {
 	return haki.JSON(w, http.StatusOK, card)
 }
 
-func (h AnonCardHandler) Query(w http.ResponseWriter, r *http.Request) error {
+func (h CardHandler) Query(w http.ResponseWriter, r *http.Request) error {
 	queryParameters := r.URL.Query()
-	l.Infof("AnonDeckHandler.Query: URL[%q] QueryParameters[%q]", r.URL.Path, queryParameters)
-
+	l.Info("AnonDeckHandler.Query",
+		l.String("URI", r.URL.Path),
+		l.Struct("QueryParameters", queryParameters),
+	)
 	if len(queryParameters) <= 0 {
-		//w.Header().Set("Content-Type", "application/json; charset=utf-8")
 		return haki.Status(w, http.StatusBadRequest)
 	}
 
-	hydrate := queryParameters.Get("hydrate")
-	if hydrate == "" {
-		hydrate = "full"
-	}
-
-	regexName := queryParameters.Get("rx_name")
-	regexCost := queryParameters.Get("rx_cost")
-	notRegexCost := queryParameters.Get("nrx_cost")
-	regexType := queryParameters.Get("rx_type")
-	notRegexType := queryParameters.Get("nrx_type")
-	expansionParam := queryParameters.Get("e")
-	numberParam := queryParameters.Get("n")
-	stockQtdParam := queryParameters.Get("q")
-	order := queryParameters.Get("order")
-
-	queryRestrinctions := make(map[string]interface{})
-	idxParam := 0
-	if regexName != "" {
-		idxParam++
-		queryRestrinctions[fmt.Sprintf("c.name ~* $%d", idxParam)] = regexName
-	}
-	if regexCost != "" {
-		idxParam++
-		queryRestrinctions[fmt.Sprintf("c.manacost_label ~* $%d", idxParam)] = regexCost
-	}
-	if notRegexCost != "" {
-		idxParam++
-		queryRestrinctions[fmt.Sprintf("c.manacost_label not ~* $%d", idxParam)] = notRegexCost
-	}
-	if regexType != "" {
-		idxParam++
-		queryRestrinctions[fmt.Sprintf("c.type_label ~* $%d", idxParam)] = regexType
-	}
-	if notRegexType != "" {
-		idxParam++
-		queryRestrinctions[fmt.Sprintf("c.type_label not ~* $%d", idxParam)] = notRegexType
-	}
-	if expansionParam != "" {
-		if IDExpansion, convertErr := strconv.Atoi(expansionParam); convertErr == nil {
-			idxParam++
-			queryRestrinctions[fmt.Sprintf("c.id_expansion = $%d", idxParam)] = IDExpansion
-		} else {
-			l.Warnf("AnonDeckHandler.ExpansionParamErr: Parameter[%s] Error[%v]", expansionParam, convertErr)
-		}
-	}
-	if numberParam != "" {
-		idxParam++
-		queryRestrinctions[fmt.Sprintf("c.multiverse_number = $%d", idxParam)] = numberParam
-	}
-	if stockQtdParam != "" {
-		idxParam++
-		queryRestrinctions[fmt.Sprintf("coalesce(i.quantity, 0) >= $%d", idxParam)] = stockQtdParam
-	}
-	var cards []data.Card
-	err := raizel.Execute(
-		func(c raizel.Client) error {
-			var card data.Card
-			tmp, err := card.QueryDynamic(c, queryRestrinctions, order)
-			if err == nil {
-				cards = tmp
-			}
-			return err
-		},
+	var (
+		card      data.Card
+		cardQuery data.CardQuery
 	)
+	cardQuery.Hydrate = queryParameters.Get("hydrate")
+	cardQuery.RegexName = queryParameters.Get("rx_name")
+	cardQuery.RegexCost = queryParameters.Get("rx_cost")
+	cardQuery.NotRegexCost = queryParameters.Get("nrx_cost")
+	cardQuery.RegexType = queryParameters.Get("rx_type")
+	cardQuery.NotRegexType = queryParameters.Get("nrx_type")
+	cardQuery.IDExpansion = queryParameters.Get("e")
+	cardQuery.Number = queryParameters.Get("n")
+	cardQuery.InventoryQtd = queryParameters.Get("q")
+	cardQuery.Order = queryParameters.Get("order")
+
+	err := raizel.ExecuteWith(card.QueryRaizel, &cardQuery)
 	if err != nil {
-		l.Errorf("AnonDeckHandler.QueryErr: Restrictions[%v] Err[%v]", queryRestrinctions, err)
+		l.Error("AnonDeckHandler.QueryRaizelErr",
+			l.Struct("QueryParameters", queryParameters),
+			l.Err(err),
+		)
 		return haki.Err(w, err)
 	}
-	cardsSize := len(cards)
+	cardsSize := len(cardQuery.Result)
 	l.Info("AnonDeckHandler.QueryResult",
 		l.Int("Cards.Len", cardsSize),
-		l.String("Hydrate", hydrate),
+		l.String("Hydrate", cardQuery.Hydrate),
 	)
-	return haki.JSON(w, http.StatusOK, cards)
+	return haki.JSON(w, http.StatusOK, cardQuery.Result)
 }
 
 //NewAnonDeckHandler creates a new unauthorized deckHandler instance
 func NewAnonDeckHandler() http.HandlerFunc {
-	var deckHandler AnonDeckHandler
+	var deckHandler DeckHandler
 	return haki.Handler(haki.Log(haki.Error(deckHandler.ServeHTTP)))
 }
 
-//AnonDeckHandler is the unsecure handler to get and post Decks
-type AnonDeckHandler struct{}
+type DeckHandler struct{}
 
-func (h AnonDeckHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) error {
+func (h DeckHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) error {
 	if r.Method == "GET" {
 		basePath, lastPath := path.Split(r.URL.Path)
 		l.Infof("AnonDeckHandler.ServeHTTP: Path[%s] BasePath[%s] LastPath[%s]", r.URL.Path, basePath, lastPath)
@@ -786,7 +740,7 @@ func (h AnonDeckHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) error
 	return haki.Status(w, http.StatusMethodNotAllowed)
 }
 
-func (h AnonDeckHandler) Persist(w http.ResponseWriter, r *http.Request) error {
+func (h DeckHandler) Persist(w http.ResponseWriter, r *http.Request) error {
 	queryParameters := r.URL.Query()
 	l.Infof("PostDeckdHandler: URI[%q] Parameters[%q]", r.URL.Path, queryParameters)
 
@@ -808,7 +762,7 @@ func (h AnonDeckHandler) Persist(w http.ResponseWriter, r *http.Request) error {
 	return haki.Status(w, http.StatusAccepted)
 }
 
-func (h AnonDeckHandler) Read(w http.ResponseWriter, r *http.Request) error {
+func (h DeckHandler) Read(w http.ResponseWriter, r *http.Request) error {
 	readParameter := path.Base(r.URL.Path)
 	queryParameters := r.URL.Query()
 	l.Infof("AnonDeckHandler.Read: URI[%q] ReadParameter[%q] Parameters[%q]", r.URL.Path, readParameter, queryParameters)
@@ -828,43 +782,31 @@ func (h AnonDeckHandler) Read(w http.ResponseWriter, r *http.Request) error {
 	return haki.JSON(w, http.StatusOK, deck)
 }
 
-func (h AnonDeckHandler) Query(w http.ResponseWriter, r *http.Request) error {
+func (h DeckHandler) Query(w http.ResponseWriter, r *http.Request) error {
 	queryParameters := r.URL.Query()
 	l.Infof("AnonDeckHandler.QueryByName: URI[%q] Parameters[%q]", r.URL.Path, queryParameters)
 
-	var decks []data.Deck
-	err := raizel.Execute(
-		func(c raizel.Client) error {
-			queryName := queryParameters.Get("rx_name")
-			var queryDeck data.Deck
-			if queryName == "" {
-				queryDeck = data.Deck{}
-			} else {
-				queryDeck = data.Deck{Name: queryName}
-			}
-			tmp, err := queryDeck.QueryByName(c)
-			if err == nil {
-				decks = tmp
-			}
-			return err
-		},
+	var (
+		deck      data.Deck
+		deckQuery data.DeckQuery
 	)
+	deckQuery.RegexName = queryParameters.Get("rx_name")
+	err := raizel.ExecuteWith(deck.Query, &deckQuery)
 	if err != nil {
 		return haki.Err(w, err)
 	}
-	return haki.JSON(w, http.StatusOK, decks)
+	return haki.JSON(w, http.StatusOK, deckQuery.Result)
 }
 
 //NewAnonExpansionHandler creates a new unauthorized expansionHandler instance
 func NewAnonExpansionHandler() http.HandlerFunc {
-	var expansionHandler AnonExpansionHandler
+	var expansionHandler ExpansionHandler
 	return haki.Handler(haki.Log(haki.Error(expansionHandler.ServeHTTP)))
 }
 
-//AnonExpansionHandler is the unsecure handler to get and query Expansions
-type AnonExpansionHandler struct{}
+type ExpansionHandler struct{}
 
-func (h AnonExpansionHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) error {
+func (h ExpansionHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) error {
 	if r.Method == "GET" {
 		basePath, lastPath := path.Split(r.URL.Path)
 		l.Infof("AnonExpansionHandler.ServeHTTP: Path[%s] BasePath[%s] LastPath[%s]", r.URL.Path, basePath, lastPath)
@@ -876,7 +818,7 @@ func (h AnonExpansionHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) 
 	return haki.Status(w, http.StatusMethodNotAllowed)
 }
 
-func (h AnonExpansionHandler) Read(w http.ResponseWriter, r *http.Request) error {
+func (h ExpansionHandler) Read(w http.ResponseWriter, r *http.Request) error {
 	readParameter := path.Base(r.URL.Path)
 	queryParameters := r.URL.Query()
 	l.Infof("AnonExpansionHandler.Read: URI[%q] ReadParameter[%q] Parameters[%q]", r.URL.Path, readParameter, queryParameters)
@@ -898,42 +840,53 @@ func (h AnonExpansionHandler) Read(w http.ResponseWriter, r *http.Request) error
 	return haki.JSON(w, http.StatusOK, expansion)
 }
 
-func (h AnonExpansionHandler) Query(w http.ResponseWriter, r *http.Request) error {
+func (h ExpansionHandler) Query(w http.ResponseWriter, r *http.Request) error {
 	queryParameters := r.URL.Query()
 	l.Infof("GetHandler: URI[%s] QueryParameters[%q]", r.URL.Path, queryParameters)
-
-	hydrate := queryParameters.Get("hydrate")
-	if hydrate == "" {
-		hydrate = "full"
-	}
-	regexName := queryParameters.Get("rx_name")
-	order := queryParameters.Get("order")
-
-	queryRestrinctions := make(map[string]interface{})
-	if regexName != "" {
-		queryRestrinctions["e.name ~* $1"] = regexName
-	}
-	if order != "" {
-		order = "c.name"
-	}
 	var (
-		expansion  data.Expansion
-		expansions []data.Expansion
+		expansion    data.Expansion
+		queryBuilder data.ExpansionQuery
 	)
-	err := raizel.Execute(
-		func(c raizel.Client) error {
-			tmp, err := expansion.QueryDynamic(c, queryRestrinctions, order)
-			if err != nil {
-				return err
-			}
-			expansions = tmp
-			return nil
-		},
-	)
+	queryBuilder.Hydrate = queryParameters.Get("hydrate")
+	queryBuilder.RegexName = queryParameters.Get("rx_name")
+	queryBuilder.Order = queryParameters.Get("order")
+	err := raizel.ExecuteWith(expansion.Query, &queryBuilder)
 	if err != nil {
 		return haki.Err(w, err)
 	}
-	expansionSize := len(expansions)
-	l.Debugf("QueryExpansionHandler.QueryExpansions: Expansions.Len[%v] Hydrate[%s]", expansionSize, hydrate)
-	return haki.JSON(w, http.StatusOK, expansions)
+	expansionSize := len(queryBuilder.Result)
+	l.Debugf("QueryExpansionHandler.QueryExpansions: Expansions.Len[%v] Hydrate[%s]", expansionSize, queryBuilder.Hydrate)
+	return haki.JSON(w, http.StatusOK, queryBuilder.Result)
+}
+
+//NewAnonInventoryHandler creates a new DeckHandler instance
+func NewAnonInventoryHandler() http.HandlerFunc {
+	var inventoryHandler InventoryHandler
+	return haki.Handler(haki.Log(haki.Error(inventoryHandler.ServeHTTP)))
+}
+
+type InventoryHandler struct{}
+
+func (h InventoryHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) error {
+	if r.Method == "POST" || r.Method == "PUT" {
+		return h.Persist(w, r)
+	}
+	return haki.Status(w, http.StatusMethodNotAllowed)
+}
+
+func (h InventoryHandler) Persist(w http.ResponseWriter, r *http.Request) error {
+	readParameter := path.Base(r.URL.Path)
+	l.Infof("AnonInventoryHandler.Persist: URI[%s] ReadParameters[%s]", r.URL.Path, readParameter)
+
+	var inventory data.Inventory
+	if err := haki.ReadJSON(r, &inventory); err != nil {
+		return haki.Err(w, err)
+	}
+	//Fixed to zero for anonymous inventory
+	inventory.ID = 0
+	inventory.IDPlayer = 0
+	if err := raizel.Execute(inventory.PersistByID); err != nil {
+		return haki.Err(w, err)
+	}
+	return haki.Status(w, http.StatusAccepted)
 }
