@@ -13,7 +13,7 @@ PKG_COVERAGE   	:= $(NAME).pkg.coverage
 ETC_DIR := ./etc
 CONF_DIR := $(ETC_DIR)/$(NAME)
 CONF_TYPE := yaml
-CONF := $(CONF_DIR)/$(NAME).$(CONF_TYPE)
+CONF := $(CONF_DIR)/$(NAME).local.$(CONF_TYPE)
 
 TEST_PKGS := 
 

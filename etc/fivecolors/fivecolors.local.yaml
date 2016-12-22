@@ -1,6 +1,6 @@
-version: "0.0.2-heroku"
-environment: "heroku"
-assetDir: "var/asset"
+version: "0.0.3-local"
+environment: "local"
+assetDir: "/Users/raphaeljansen/Storage/fivecolors/asset"
 webDir: "web"
 
 l:

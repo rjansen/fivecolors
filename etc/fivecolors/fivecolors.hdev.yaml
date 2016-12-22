@@ -1,5 +1,5 @@
-version: "0.0.2-heroku"
-environment: "heroku"
+version: "0.0.3-dev"
+environment: "dev"
 assetDir: "var/asset"
 webDir: "web"
 
@@ -11,7 +11,7 @@ l:
 
 raizel:
     driver: "postgres"
-    url: "postgres://fivecolors:fivecolors@127.0.0.1:5432/fivecolors?sslmode=disable"
+    url: "postgres://fivecolors:fivecolors@127.0.0.1:5432/fivecolors_hdev?sslmode=disable"
     numConns: 10
 
 handler:

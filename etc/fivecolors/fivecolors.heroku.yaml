@@ -1,17 +1,17 @@
-version: "0.0.2-heroku"
-environment: "heroku"
+version: "0.0.3-prod"
+environment: "prod"
 assetDir: "var/asset"
 webDir: "web"
 
 l:
     provider: "logrus"
-    level: "debug"
+    level: "info"
     format: "text_color"
     out: "stdout"
 
 raizel:
     driver: "postgres"
-    url: "postgres://fivecolors:fivecolors@127.0.0.1:5432/fivecolors?sslmode=disable"
+    url: "postgres://fivecolors:fivecolors@127.0.0.1:5432/fivecolors_h?sslmode=disable"
     numConns: 10
 
 handler:
