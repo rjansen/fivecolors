@@ -34,6 +34,7 @@ func main() {
 	// http.Handle("/identity/", security.NewIdentityHandler())
 	// http.Handle("/player/", api.NewGetPlayerHandler())
 	http.HandleFunc("/api/cards/", api.NewAnonCardHandler())
+	http.HandleFunc("/api/tokens/", api.NewAnonTokenHandler())
 	http.HandleFunc("/api/decks/", api.NewAnonDeckHandler())
 	http.HandleFunc("/api/expansions/", api.NewAnonExpansionHandler())
 	http.HandleFunc("/api/inventories/", api.NewAnonInventoryHandler())

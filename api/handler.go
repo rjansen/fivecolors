@@ -231,6 +231,92 @@ func (h CardHandler) Query(w http.ResponseWriter, r *http.Request) error {
 	return haki.JSON(w, http.StatusOK, cardQuery.Result)
 }
 
+func NewAnonTokenHandler() http.HandlerFunc {
+	var tokenHandler TokenHandler
+	return haki.Handler(haki.Log(haki.Error(tokenHandler.ServeHTTP)))
+}
+
+type TokenHandler struct{}
+
+func (h TokenHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) error {
+	basePath, lastPath := path.Split(r.URL.Path)
+	l.Info("TokenHandler.ServeHTTP",
+		l.String("MethodPath", r.Method),
+		l.String("Path", r.URL.Path),
+		l.String("BasePath", basePath),
+		l.String("LastPath", lastPath),
+	)
+	if r.Method == "GET" {
+		if lastPath == "" {
+			return h.Query(w, r)
+		}
+		return h.Read(w, r)
+	}
+	return haki.Status(w, http.StatusMethodNotAllowed)
+}
+
+func (h TokenHandler) Read(w http.ResponseWriter, r *http.Request) error {
+	readParameter := path.Base(r.URL.Path)
+	l.Info("TokenHandler.Read",
+		l.String("URI", r.URL.Path),
+		l.String("parameter", readParameter),
+	)
+	var token data.Token
+	var err error
+	if id, atoirErr := strconv.Atoi(readParameter); atoirErr == nil {
+		token.ID = id
+		err = raizel.Execute(token.ReadByID)
+	} else {
+		token.Name = readParameter
+		err = raizel.Execute(token.ReadByName)
+	}
+	if err != nil {
+		if err == raizel.ErrNotFound {
+			return haki.Status(w, http.StatusNotFound)
+		}
+		l.Error("TokenHandler.ReadErr", l.String("parameter", readParameter), l.Err(err))
+		return haki.Status(w, http.StatusBadRequest)
+	}
+	if err != nil {
+		return haki.Status(w, http.StatusBadRequest)
+	}
+	return haki.JSON(w, http.StatusOK, token)
+}
+
+func (h TokenHandler) Query(w http.ResponseWriter, r *http.Request) error {
+	queryParameters := r.URL.Query()
+	l.Info("TokenHandler.Query",
+		l.String("URI", r.URL.Path),
+		l.Struct("QueryParameters", queryParameters),
+	)
+
+	var (
+		token      data.Token
+		tokenQuery data.TokenQuery
+	)
+	tokenQuery.Hydrate = queryParameters.Get("hydrate")
+	tokenQuery.RegexName = queryParameters.Get("rx_name")
+	tokenQuery.RegexType = queryParameters.Get("rx_type")
+	tokenQuery.NotRegexType = queryParameters.Get("nrx_type")
+	tokenQuery.IDExpansion = queryParameters.Get("e")
+	tokenQuery.Order = queryParameters.Get("order")
+
+	err := raizel.ExecuteWith(token.Query, &tokenQuery)
+	if err != nil {
+		l.Error("TokenHandler.QueryErr",
+			l.Struct("QueryParameters", queryParameters),
+			l.Err(err),
+		)
+		return haki.Err(w, err)
+	}
+	tokensSize := len(tokenQuery.Result)
+	l.Info("TokenHandler.QueryResult",
+		l.Int("Tokens.Len", tokensSize),
+		l.String("Hydrate", tokenQuery.Hydrate),
+	)
+	return haki.JSON(w, http.StatusOK, tokenQuery.Result)
+}
+
 //NewAnonDeckHandler creates a new unauthorized deckHandler instance
 func NewAnonDeckHandler() http.HandlerFunc {
 	var deckHandler DeckHandler

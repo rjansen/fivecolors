@@ -118,6 +118,86 @@ func (q *CardQuery) Fetch(i raizel.Iterable) error {
 	return nil
 }
 
+type TokenQuery struct {
+	Query
+	//Result Fields
+	Result []Token
+	//Filter Fields
+	Hydrate      string
+	RegexName    string
+	RegexType    string
+	NotRegexType string
+	IDExpansion  string
+}
+
+func (q *TokenQuery) Build() error {
+	idxParam := 0
+	if q.RegexName != "" {
+		idxParam++
+		q.Restrictions = append(q.Restrictions, fmt.Sprintf("t.name ~* $%d", idxParam))
+		q.Values = append(q.Values, q.RegexName)
+	}
+	if q.RegexType != "" {
+		idxParam++
+		q.Restrictions = append(q.Restrictions, fmt.Sprintf("t.type ~* $%d", idxParam))
+		q.Values = append(q.Values, q.RegexType)
+	}
+	if q.NotRegexType != "" {
+		idxParam++
+		q.Restrictions = append(q.Restrictions, fmt.Sprintf("t.type not ~* $%d", idxParam))
+		q.Values = append(q.Values, q.NotRegexType)
+	}
+	if q.IDExpansion != "" {
+		if idExpansion, convertErr := strconv.Atoi(q.IDExpansion); convertErr == nil {
+			idxParam++
+			q.Restrictions = append(q.Restrictions, fmt.Sprintf("t.id_expansion = $%d", idxParam))
+			q.Values = append(q.Values, idExpansion)
+		} else {
+			l.Warn("TokenQuery.Build.ExpansionParamErr", l.String("Parameter", q.IDExpansion), l.Err(convertErr))
+		}
+	}
+	query :=
+		`
+		select t.id, t.name, t.label, coalesce(t.text, ''), coalesce(t.color, ''), 
+			coalesce(t.combat_power, ''), coalesce(t.power, ''), coalesce(t.toughness, ''),
+			t.type, t.artist, t.id_asset,
+            e.id, e.name, e.label, a.id_asset
+        from token t
+            left join expansion e on t.id_expansion = e.id
+            left join expansion_asset a on a.id_expansion = e.id and a.id_rarity = 0
+		`
+
+	if len(q.Restrictions) > 0 {
+		query += "where " + strings.Join(q.Restrictions, " and ") + "\n"
+	}
+
+	if q.Order != "" {
+		query += " order by " + q.Order
+	} else {
+		query += " order by e.name, t.type, t.name"
+	}
+
+	q.SQL = query
+	l.Debug("data.TokenQuery.Built",
+		l.String("Query", q.SQL),
+		l.Struct("Params", q.Values),
+	)
+	return nil
+}
+
+func (q *TokenQuery) Fetch(i raizel.Iterable) error {
+	var resultTokens []Token
+	for i.Next() {
+		var token Token
+		if fetchErr := token.FetchFull(i); fetchErr != nil {
+			return fetchErr
+		}
+		resultTokens = append(resultTokens, token)
+	}
+	q.Result = resultTokens
+	return nil
+}
+
 type ExpansionQuery struct {
 	Query
 	//Result Fields

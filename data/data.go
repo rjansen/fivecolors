@@ -147,6 +147,74 @@ func (c Card) Query(client raizel.Client, args ...interface{}) error {
 	return nil
 }
 
+type Token struct {
+	ID          int       `json:"id"`
+	Name        string    `json:"name"`
+	Label       string    `json:"label"`
+	Text        string    `json:"text"`
+	Color       string    `json:"color"`
+	CombatPower string    `json:"combatPower"`
+	Power       string    `json:"power"`
+	Toughness   string    `json:"toughness"`
+	Type        string    `json:"type"`
+	Artist      string    `json:"artist"`
+	Expansion   Expansion `json:"expansion"`
+	IDAsset     int       `json:"idAsset"`
+}
+
+func (t *Token) FetchFull(fetchable raizel.Fetchable) error {
+	return fetchable.Scan(&t.ID, &t.Name, &t.Label, &t.Text, &t.Color,
+		&t.CombatPower, &t.Power, &t.Toughness,
+		&t.Type, &t.Artist, &t.IDAsset,
+		&t.Expansion.ID, &t.Expansion.Name, &t.Expansion.Label, &t.Expansion.IDAsset)
+}
+
+func (t *Token) ReadByID(client raizel.Client) error {
+	if t.ID <= 0 {
+		return errors.New("data.Token.ReadErr: Message='Token.ID is empty'")
+	}
+	query :=
+		`
+		select t.id, t.name, t.label, coalesce(t.text, ''), coalesce(t.color, ''), 
+			coalesce(t.combat_power, ''), coalesce(t.power, ''), coalesce(t.toughness, ''),
+			t.type, t.artist, t.id_asset,
+            e.id, e.name, e.label, a.id_asset
+        from token t
+            left join expansion e on t.id_expansion = e.id
+            left join expansion_asset a on a.id_expansion = e.id and a.id_rarity = 0
+        where t.id = $1`
+	return client.QueryOne(query, t.FetchFull, t.ID)
+}
+
+func (t *Token) ReadByName(client raizel.Client) error {
+	if strings.TrimSpace(t.Name) == "" {
+		return errors.New("data.Token.ReadErr: Message='Token.Name is empty'")
+	}
+	query :=
+		`
+		select t.id, t.name, t.label, coalesce(t.text, ''), coalesce(t.color, ''), 
+			coalesce(t.combat_power, ''), coalesce(t.power, ''), coalesce(t.toughness, ''),
+			t.type, t.artist, t.id_asset,
+            e.id, e.name, e.label, a.id_asset
+        from token t
+            left join expansion e on t.id_expansion = e.id
+            left join expansion_asset a on a.id_expansion = e.id and a.id_rarity = 0
+        where t.name = $1`
+	return client.QueryOne(query, t.FetchFull, t.Name)
+}
+
+func (t Token) Query(client raizel.Client, args ...interface{}) error {
+	builder := args[0].(*TokenQuery)
+	if err := builder.Build(); err != nil {
+		return err
+	}
+	queryErr := client.Query(builder.SQL, builder.Fetch, builder.Values...)
+	if queryErr != nil {
+		return queryErr
+	}
+	return nil
+}
+
 type Expansion struct {
 	ID      int    `json:"id"`
 	Name    string `json:"name"`
