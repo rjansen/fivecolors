@@ -2,6 +2,7 @@ package api
 
 import (
 	"io"
+	"strings"
 	//"bytes"
 	// "encoding/json"
 	// "errors"
@@ -21,121 +22,48 @@ import (
 	// "github.com/valyala/fasthttp"
 )
 
-//NewGetPlayerHandler creates a new GetPlayerHandler instance
-// func NewGetPlayerHandler() http.Handler {
-// 	return identity.NewHeaderAuthenticatedHandler(&GetPlayerHandler{})
-// }
+//NewAnonPlayerHandler creates a new unauthorized playerHandler instance
+func NewAnonPlayerHandler() http.HandlerFunc {
+	var playerHandler PlayerHandler
+	return haki.Handler(haki.Log(haki.Error(playerHandler.ServeHTTP)))
+}
 
-//GetPlayerHandler is the handler to get Players
-// type GetPlayerHandler struct {
-// 	identity.AuthenticatedHandler
-// }
+type PlayerHandler struct{}
 
-// func (h GetPlayerHandler) HandleRequest(ctx *fasthttp.RequestCtx) {
+func (h PlayerHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) error {
+	basePath, lastPath := path.Split(r.URL.Path)
+	l.Debug("PlayerHandler.ServeHTTP",
+		l.String("Method", r.Method),
+		l.String("Path", r.URL.Path),
+		l.String("BasePath", basePath),
+		l.String("LastPath", lastPath),
+	)
+	if r.Method == "GET" {
+		return h.Read(w, r)
+	}
+	return haki.Status(w, http.StatusMethodNotAllowed)
+}
 
-// }
-
-// func (h *GetPlayerHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-// 	urlPathParameters := strings.Split(r.URL.Path, "/")
-// 	queryParameters := r.URL.Query()
-// 	l.Infof("GetPlayerHandler: URL[%q] PathParameters[%q] QueryParameters[%q]", r.URL.Path, urlPathParameters, queryParameters)
-
-// 	session := h.GetSession()
-// 	if strings.TrimSpace(session.Username) == "" {
-// 		http.NotFound(w, r)
-// 		return
-// 	}
-// 	player, err := data.GetPlayer(session.Username)
-// 	if err != nil {
-// 		l.Errorf("GetPlayerHandler.GetPlayerError: Session.ID[%v] Player.Username[%v] Error[%v]", session.ID, session.Username, err.Error())
-// 		http.NotFound(w, r)
-// 		//http.Error(w, err.Error(), http.StatusInternalServerError)
-// 		return
-// 	}
-
-// 	w.Header().Set("Content-Type", "application/json; charset=utf-8")
-// 	w.WriteHeader(http.StatusOK)
-// 	jsonData, err := json.Marshal(player)
-// 	bytesWritten, err := w.Write(jsonData)
-// 	if err != nil {
-// 		l.Errorf("GetPlayerHandler.WriteResponseError: Player[%v] Error[%v]", player, err)
-// 		http.Error(w, err.Error(), http.StatusInternalServerError)
-// 	} else {
-// 		l.Debugf("GetPlayerHandler.JsonWritten: Player[%v] Bytes[%v]", player, bytesWritten)
-// 	}
-
-// }
-
-//DeleteInventoryHandler is the handler to get Decks
-// type DeleteInventoryHandler struct {
-// 	security.InjectedPlayerHandler
-// }
-
-// func (h DeleteInventoryHandler) HandleRequest(ctx *fasthttp.RequestCtx) {
-
-// }
-
-// func (h *DeleteInventoryHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-// 	urlPathParameters := strings.Split(r.URL.Path, "/")
-// 	queryParameters := r.URL.Query()
-// 	l.Infof("DeleteInventoryHandler: URL[%q] PathParameters[%q] QueryParameters[%q]", r.URL.Path, urlPathParameters, queryParameters)
-
-// 	inventoryID := urlPathParameters[2]
-// 	if inventoryID == "" {
-// 		http.NotFound(w, r)
-// 		return
-// 	}
-// 	inventory := &data.Inventory{}
-// 	var convertIDErr error
-// 	inventory.ID, convertIDErr = strconv.Atoi(inventoryID)
-// 	if convertIDErr != nil {
-// 		l.Errorf("DeleteInventoryHandler.DeckDeleteError: Inventory.ID[%v] Error[%v]", inventoryID, convertIDErr)
-// 		http.NotFound(w, r)
-// 		//http.Error(w, err.Error(), http.StatusInternalServerError)
-// 		return
-// 	}
-// 	inventory.IDPlayer = h.GetPlayer().ID
-// 	if err := inventory.Delete(); err != nil {
-// 		l.Errorf("DeleteInventoryHandler.DeckDeleteError: Inventory.ID[%v] Error[%v]", inventoryID, err)
-// 		http.NotFound(w, r)
-// 		//http.Error(w, err.Error(), http.StatusInternalServerError)
-// 		return
-// 	}
-// 	l.Debugf("DeleteInventoryHandler.DeletedDeck: Deck.ID[%v]", inventoryID)
-// 	w.Header().Set("Content-Type", "application/json; charset=utf-8")
-// 	w.WriteHeader(http.StatusOK)
-// }
-
-// func (h DeckHandler) Delete(player *data.Player, w http.ResponseWriter, r *http.Request) error {
-// 	urlPathParameters := strings.Split(r.URL.Path, "/")
-// 	queryParameters := r.URL.Query()
-// 	l.Infof("DeleteDeckHandler: URL[%q] PathParameters[%q] QueryParameters[%q]", r.URL.Path, urlPathParameters, queryParameters)
-
-// 	deckID := urlPathParameters[2]
-// 	if deckID == "" {
-// 		http.NotFound(w, r)
-// 		return errors.New(http.StatusText(http.StatusNotFound))
-// 	}
-// 	deck := &data.Deck{}
-// 	var convertIDErr error
-// 	deck.ID, convertIDErr = strconv.Atoi(deckID)
-// 	if convertIDErr != nil {
-// 		l.Errorf("DeleteDeckHandler.DeckDeleteError: Deck.ID[%v] Error[%v]", deckID, convertIDErr)
-// 		http.NotFound(w, r)
-// 		//http.Error(w, err.Error(), http.StatusInternalServerError)
-// 		return errors.New(http.StatusText(http.StatusNotFound))
-// 	}
-// 	if err := deck.Delete(); err != nil {
-// 		l.Errorf("DeleteDeckHandler.DeckDeleteError: Deck.ID[%v] Error[%v]", deckID, err)
-// 		http.NotFound(w, r)
-// 		//http.Error(w, err.Error(), http.StatusInternalServerError)
-// 		return errors.New(http.StatusText(http.StatusNotFound))
-// 	}
-// 	l.Debugf("DeleteDeckHandler.DeletedDeck: Deck.ID[%v]", deckID)
-// 	w.Header().Set("Content-Type", "application/json; charset=utf-8")
-// 	w.WriteHeader(http.StatusOK)
-// 	return nil
-// }
+func (h PlayerHandler) Read(w http.ResponseWriter, r *http.Request) error {
+	readParameter := path.Base(r.URL.Path)
+	l.Info("PlayerHandler.Read",
+		l.String("parameter", readParameter),
+	)
+	if strings.TrimSpace(readParameter) == "" {
+		return haki.Status(w, http.StatusNotFound)
+	}
+	var player data.Player
+	player.Username = readParameter
+	err := raizel.Execute(player.ReadByUsername)
+	if err != nil {
+		if err == raizel.ErrNotFound {
+			return haki.Status(w, http.StatusNotFound)
+		}
+		l.Error("PlayerHandler.ReadErr", l.String("parameter", readParameter), l.Err(err))
+		return haki.Status(w, http.StatusInternalServerError)
+	}
+	return haki.JSON(w, http.StatusOK, player)
+}
 
 //NewAnonCardHandler creates a new unauthorized cardHandler instance
 func NewAnonCardHandler() http.HandlerFunc {
@@ -147,8 +75,8 @@ type CardHandler struct{}
 
 func (h CardHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) error {
 	basePath, lastPath := path.Split(r.URL.Path)
-	l.Info("DeckHandler.ServeHTTP",
-		l.String("MethodPath", r.Method),
+	l.Debug("CardHandler.ServeHTTP",
+		l.String("Method", r.Method),
 		l.String("Path", r.URL.Path),
 		l.String("BasePath", basePath),
 		l.String("LastPath", lastPath),
@@ -165,7 +93,6 @@ func (h CardHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) error {
 func (h CardHandler) Read(w http.ResponseWriter, r *http.Request) error {
 	readParameter := path.Base(r.URL.Path)
 	l.Info("CardHandler.Read",
-		l.String("URI", r.URL.Path),
 		l.String("parameter", readParameter),
 	)
 	var card data.Card
@@ -193,7 +120,6 @@ func (h CardHandler) Read(w http.ResponseWriter, r *http.Request) error {
 func (h CardHandler) Query(w http.ResponseWriter, r *http.Request) error {
 	queryParameters := r.URL.Query()
 	l.Info("CardHandler.Query",
-		l.String("URI", r.URL.Path),
 		l.Struct("QueryParameters", queryParameters),
 	)
 	if len(queryParameters) <= 0 {
@@ -224,7 +150,7 @@ func (h CardHandler) Query(w http.ResponseWriter, r *http.Request) error {
 		return haki.Err(w, err)
 	}
 	cardsSize := len(cardQuery.Result)
-	l.Info("CardHandler.QueryResult",
+	l.Debug("CardHandler.QueryResult",
 		l.Int("Cards.Len", cardsSize),
 		l.String("Hydrate", cardQuery.Hydrate),
 	)
@@ -240,8 +166,8 @@ type TokenHandler struct{}
 
 func (h TokenHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) error {
 	basePath, lastPath := path.Split(r.URL.Path)
-	l.Info("TokenHandler.ServeHTTP",
-		l.String("MethodPath", r.Method),
+	l.Debug("TokenHandler.ServeHTTP",
+		l.String("Method", r.Method),
 		l.String("Path", r.URL.Path),
 		l.String("BasePath", basePath),
 		l.String("LastPath", lastPath),
@@ -258,7 +184,6 @@ func (h TokenHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) error {
 func (h TokenHandler) Read(w http.ResponseWriter, r *http.Request) error {
 	readParameter := path.Base(r.URL.Path)
 	l.Info("TokenHandler.Read",
-		l.String("URI", r.URL.Path),
 		l.String("parameter", readParameter),
 	)
 	var token data.Token
@@ -286,7 +211,6 @@ func (h TokenHandler) Read(w http.ResponseWriter, r *http.Request) error {
 func (h TokenHandler) Query(w http.ResponseWriter, r *http.Request) error {
 	queryParameters := r.URL.Query()
 	l.Info("TokenHandler.Query",
-		l.String("URI", r.URL.Path),
 		l.Struct("QueryParameters", queryParameters),
 	)
 
@@ -310,7 +234,7 @@ func (h TokenHandler) Query(w http.ResponseWriter, r *http.Request) error {
 		return haki.Err(w, err)
 	}
 	tokensSize := len(tokenQuery.Result)
-	l.Info("TokenHandler.QueryResult",
+	l.Debug("TokenHandler.QueryResult",
 		l.Int("Tokens.Len", tokensSize),
 		l.String("Hydrate", tokenQuery.Hydrate),
 	)
@@ -327,19 +251,22 @@ type DeckHandler struct{}
 
 func (h DeckHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) error {
 	basePath, lastPath := path.Split(r.URL.Path)
-	l.Info("DeckHandler.ServeHTTP",
-		l.String("MethodPath", r.Method),
+	l.Debug("DeckHandler.ServeHTTP",
+		l.String("Method", r.Method),
 		l.String("Path", r.URL.Path),
 		l.String("BasePath", basePath),
 		l.String("LastPath", lastPath),
 	)
-	if r.Method == "GET" {
+	switch r.Method {
+	case "GET":
 		if lastPath == "" {
 			return h.Query(w, r)
 		}
 		return h.Read(w, r)
-	} else if r.Method == "POST" {
+	case "POST":
 		return h.Persist(w, r)
+	case "DELETE":
+		return h.Delete(w, r)
 	}
 	return haki.Status(w, http.StatusMethodNotAllowed)
 }
@@ -347,7 +274,6 @@ func (h DeckHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) error {
 func (h DeckHandler) Persist(w http.ResponseWriter, r *http.Request) error {
 	queryParameters := r.URL.Query()
 	l.Info("DeckHandler.Persist",
-		l.String("URI", r.URL.Path),
 		l.Struct("QueryParameters", queryParameters),
 	)
 	var err error
@@ -371,10 +297,8 @@ func (h DeckHandler) Persist(w http.ResponseWriter, r *http.Request) error {
 func (h DeckHandler) Read(w http.ResponseWriter, r *http.Request) error {
 	readParameter := path.Base(r.URL.Path)
 	l.Info("DeckHandler.Read",
-		l.String("URI", r.URL.Path),
 		l.Struct("ReadParameter", readParameter),
 	)
-
 	var deck data.Deck
 	var err error
 	if id, atoirErr := strconv.Atoi(readParameter); atoirErr == nil {
@@ -393,7 +317,6 @@ func (h DeckHandler) Read(w http.ResponseWriter, r *http.Request) error {
 func (h DeckHandler) Query(w http.ResponseWriter, r *http.Request) error {
 	queryParameters := r.URL.Query()
 	l.Infof("DeckHandler.Query",
-		l.String("URI", r.URL.Path),
 		l.Struct("QueryParameters", queryParameters),
 	)
 	var (
@@ -408,6 +331,28 @@ func (h DeckHandler) Query(w http.ResponseWriter, r *http.Request) error {
 	return haki.JSON(w, http.StatusOK, deckQuery.Result)
 }
 
+func (h DeckHandler) Delete(w http.ResponseWriter, r *http.Request) error {
+	readParameter := path.Base(r.URL.Path)
+	l.Info("DeckHandler.Delete",
+		l.Struct("ReadParameter", readParameter),
+	)
+	var deck data.Deck
+	var err error
+	deck.ID, err = strconv.Atoi(readParameter)
+	if err != nil {
+		l.Info("DeckHandler.Delete.InvalidRequest",
+			l.String("Parameter", readParameter),
+			l.Err(err),
+		)
+		return haki.Status(w, http.StatusBadRequest)
+	}
+	err = raizel.Execute(deck.Delete)
+	if err != nil {
+		return haki.Err(w, err)
+	}
+	return nil
+}
+
 //NewAnonExpansionHandler creates a new unauthorized expansionHandler instance
 func NewAnonExpansionHandler() http.HandlerFunc {
 	var expansionHandler ExpansionHandler
@@ -418,8 +363,8 @@ type ExpansionHandler struct{}
 
 func (h ExpansionHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) error {
 	basePath, lastPath := path.Split(r.URL.Path)
-	l.Info("ExpansionHandler.ServeHTTP",
-		l.String("MethodPath", r.Method),
+	l.Debug("ExpansionHandler.ServeHTTP",
+		l.String("Method", r.Method),
 		l.String("Path", r.URL.Path),
 		l.String("BasePath", basePath),
 		l.String("LastPath", lastPath),
@@ -436,7 +381,6 @@ func (h ExpansionHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) erro
 func (h ExpansionHandler) Read(w http.ResponseWriter, r *http.Request) error {
 	readParameter := path.Base(r.URL.Path)
 	l.Info("ExpansionHandler.Read",
-		l.String("URI", r.URL.Path),
 		l.Struct("ReadParameter", readParameter),
 	)
 	var (
@@ -459,7 +403,6 @@ func (h ExpansionHandler) Read(w http.ResponseWriter, r *http.Request) error {
 func (h ExpansionHandler) Query(w http.ResponseWriter, r *http.Request) error {
 	queryParameters := r.URL.Query()
 	l.Info("ExpansionHandler.Query",
-		l.String("URI", r.URL.Path),
 		l.Struct("QueryParameters", queryParameters),
 	)
 	var (
@@ -492,7 +435,7 @@ type InventoryHandler struct{}
 func (h InventoryHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) error {
 	basePath, lastPath := path.Split(r.URL.Path)
 	l.Info("InventoryHandler.ServeHTTP",
-		l.String("MethodPath", r.Method),
+		l.String("Method", r.Method),
 		l.String("Path", r.URL.Path),
 		l.String("BasePath", basePath),
 		l.String("LastPath", lastPath),
@@ -506,7 +449,6 @@ func (h InventoryHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) erro
 func (h InventoryHandler) Persist(w http.ResponseWriter, r *http.Request) error {
 	readParameter := path.Base(r.URL.Path)
 	l.Info("InventoryHandler.Persist",
-		l.String("URI", r.URL.Path),
 		l.String("ReadParameters", readParameter),
 	)
 	var inventory data.Inventory
