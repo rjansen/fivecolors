@@ -45,7 +45,7 @@ func (q *CardQuery) Build() error {
 	}
 	if q.NotRegexCost != "" {
 		idxParam++
-		q.Restrictions = append(q.Restrictions, fmt.Sprintf("c.manacost_label not ~* $%d", idxParam))
+		q.Restrictions = append(q.Restrictions, fmt.Sprintf("not c.manacost_label ~* $%d", idxParam))
 		q.Values = append(q.Values, q.NotRegexCost)
 	}
 	if q.RegexType != "" {
@@ -55,7 +55,7 @@ func (q *CardQuery) Build() error {
 	}
 	if q.NotRegexType != "" {
 		idxParam++
-		q.Restrictions = append(q.Restrictions, fmt.Sprintf("c.type_label not ~* $%d", idxParam))
+		q.Restrictions = append(q.Restrictions, fmt.Sprintf("not c.type_label ~* $%d", idxParam))
 		q.Values = append(q.Values, q.NotRegexType)
 	}
 	if q.IDExpansion != "" {
@@ -144,7 +144,7 @@ func (q *TokenQuery) Build() error {
 	}
 	if q.NotRegexType != "" {
 		idxParam++
-		q.Restrictions = append(q.Restrictions, fmt.Sprintf("t.type not ~* $%d", idxParam))
+		q.Restrictions = append(q.Restrictions, fmt.Sprintf("not t.type ~* $%d", idxParam))
 		q.Values = append(q.Values, q.NotRegexType)
 	}
 	if q.IDExpansion != "" {

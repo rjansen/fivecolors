@@ -130,10 +130,10 @@ type Token struct {
 	Label       string    `json:"label"`
 	Text        string    `json:"text"`
 	Color       string    `json:"color"`
-	CombatPower string    `json:"combatPower"`
+	CombatPower string    `json:"combatpowerLabel"`
 	Power       string    `json:"power"`
 	Toughness   string    `json:"toughness"`
-	Type        string    `json:"type"`
+	Type        string    `json:"typeLabel"`
 	Artist      string    `json:"artist"`
 	Expansion   Expansion `json:"expansion"`
 	IDAsset     int       `json:"idAsset"`
