@@ -26,6 +26,8 @@ type CardQuery struct {
 	NotRegexCost string
 	RegexType    string
 	NotRegexType string
+	RegexText    string
+	NotRegexText string
 	IDExpansion  string
 	Number       string
 	InventoryQtd string
@@ -57,6 +59,16 @@ func (q *CardQuery) Build() error {
 		idxParam++
 		q.Restrictions = append(q.Restrictions, fmt.Sprintf("not c.type_label ~* $%d", idxParam))
 		q.Values = append(q.Values, q.NotRegexType)
+	}
+	if q.RegexText != "" {
+		idxParam++
+		q.Restrictions = append(q.Restrictions, fmt.Sprintf("c.text ~* $%d", idxParam))
+		q.Values = append(q.Values, q.RegexText)
+	}
+	if q.NotRegexText != "" {
+		idxParam++
+		q.Restrictions = append(q.Restrictions, fmt.Sprintf("not c.text ~* $%d", idxParam))
+		q.Values = append(q.Values, q.NotRegexText)
 	}
 	if q.IDExpansion != "" {
 		if idExpansion, convertErr := strconv.Atoi(q.IDExpansion); convertErr == nil {
@@ -94,7 +106,7 @@ func (q *CardQuery) Build() error {
 	if q.Order != "" {
 		query += " order by " + q.Order
 	} else {
-		query += " order by e.name, c.multiverse_number"
+		query += " order by e.name, c.multiverse_number, c.name"
 	}
 
 	q.SQL = query
