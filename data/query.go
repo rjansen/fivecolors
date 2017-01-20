@@ -106,7 +106,7 @@ func (q *CardQuery) Build() error {
 	if q.Order != "" {
 		query += " order by " + q.Order
 	} else {
-		query += " order by e.name, c.multiverse_number, c.name"
+		query += ` order by e.name, NULLIF(regexp_replace(multiverse_number, '\D', '', 'g'), '')::int, c.name`
 	}
 
 	q.SQL = query
