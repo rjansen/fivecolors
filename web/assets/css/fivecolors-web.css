@@ -52,6 +52,49 @@ body {
     padding: 5px;
 }
 
+.card-pop-header {
+    padding: 0.25rem 1.0rem;
+}
+
+.ct-label {
+  color: #000;
+  fill: rgba(0,0,0,.8);
+  font-weight: bold;
+  font-size: 12px;
+}
+
+.ct-series-a .ct-bar {
+    stroke-width: 30px;
+    stroke: rgba(100, 50, 255, 1);
+}
+
+.ct-series-a .ct-slice-pie {
+    fill: rgba(255, 10, 10, 1);
+}
+.ct-series-b .ct-slice-pie {
+    fill: rgba(10, 255, 10, 1);
+}
+.ct-series-c .ct-slice-pie {
+    fill: rgba(100, 50, 255, 1);
+}
+.ct-series-d .ct-slice-pie {
+    fill: rgba(255, 255, 0, 1);
+}
+.ct-series-e .ct-slice-pie {
+    fill: rgba(0, 255, 255, 1);
+}
+.ct-series-f .ct-slice-pie {
+    fill: rgba(255, 100, 255, 1);
+}
+.ct-series-g .ct-slice-pie {
+    fill: rgba(255, 110, 30, 1);
+}
+
+.char-label-vertical .ct-label {
+    font-weight: bold;
+    /*-webkit-transform: rotate(-90deg);*/
+}
+
 .expansionFrame {
     width: 100%;
     padding: 5px;
@@ -73,7 +116,10 @@ body {
 
 .cardDetails {
     margin: auto;
+    width: 90%;
+    /*margin-top: 0px;*/
 }
+
 
 .hide {
     opacity: 0;
@@ -178,6 +224,13 @@ body {
     margin-top: 5px;
     margin-bottom: 5px;
     height: 230px;
+    /*width: 223px;*/
+}
+
+.card-img-lg {
+    margin-top: 5px;
+    margin-bottom: 5px;
+    height: 311px;
     /*width: 223px;*/
 }
 
