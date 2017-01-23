@@ -1,0 +1,60 @@
+<!DOCTYPE html>
+<html lang="en-us">
+
+<head>
+  <meta charset="utf-8">
+  <meta http-equiv="x-ua-compatible" content="ie=edge">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <link id="favicon" rel="shortcut icon" type="image/png" href="<%= htmlWebpackPlugin.options.metadata.baseUrl %>assets/icon/ffm_logo.png">
+
+  <title>
+      Chartist Sample
+  </title>
+
+  <meta name="description" content="<%= htmlWebpackPlugin.options.title %>">
+  <link rel="stylesheet" href="../css/tether.min.css">
+  <link rel="stylesheet" href="../css/bootstrap.min.css">
+  <link rel="stylesheet" href="../css/font-awesome.min.css">
+  <link rel="stylesheet" href="../css/chartist.min.css">
+  <link rel="stylesheet" href="../css/fivecolors-web.css">
+
+  <script name="jquery.min " type="text/javascript " src="jquery.min.js"></script>
+  <script name="tether.min" type="text/javascript" src="tether.min.js"></script>
+  <script name="bootstrap.min" type="text/javascript" src="bootstrap.min.js"></script>
+  <script name="chartist.min " type="text/javascript " src="chartist.min.js"></script>
+  <script name="chartist.min " type="text/javascript " src="jquery.min.js"></script>
+
+  <!--
+  <script name="jquery.min " type="text/javascript " src="<%= htmlWebpackPlugin.options.metadata.baseUrl %>assets/js/jquery.min.js"></script>
+  <script name="tether.min" type="text/javascript" src="<%= htmlWebpackPlugin.options.metadata.baseUrl %>assets/js/tether.min.js"></script>
+  <script name="bootstrap.min" type="text/javascript" src="<%= htmlWebpackPlugin.options.metadata.baseUrl %>assets/js/bootstrap.min.js"></script>
+  -->
+  <script type="text/javascript">
+    function renderChart() {
+        new Chartist.Bar('.ct-chart', {
+            labels: ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'],
+            series: [
+                [5, 4, 3, 7, 5, 10, 3],
+                [3, 2, 9, 5, 4, 6, 4]
+            ]
+        }, {
+                seriesBarDistance: 10,
+                reverseData: true,
+                horizontalBars: true,
+                axisY: {
+                    offset: 70
+                }
+            }
+        ); 
+    }
+  </script>
+  <!-- base url -->
+  <base href="/">
+
+</head>
+
+<body onload="renderChart()">
+  <div class="ct-chart ct-perfect-fourth"></div>
+</body>
+
+</html>

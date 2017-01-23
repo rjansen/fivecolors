@@ -68,6 +68,16 @@ body {
     stroke: rgba(100, 50, 255, 1);
 }
 
+.ct-series-a .ct-area {
+    /*fill: rgba(100, 50, 255, 1);*/
+    /*fill: rgba(255, 110, 30, 1);*/
+}
+
+.ct-series-a .ct-line {
+    stroke: rgba(100, 50, 255, 1);
+    /*stroke: rgba(255, 10, 10, 1);*/
+}
+
 .ct-series-a .ct-slice-pie {
     fill: rgba(255, 10, 10, 1);
 }
@@ -93,6 +103,10 @@ body {
 .char-label-vertical .ct-label {
     font-weight: bold;
     /*-webkit-transform: rotate(-90deg);*/
+}
+
+.deckStatsPanel {
+    padding: 5px;
 }
 
 .expansionFrame {
