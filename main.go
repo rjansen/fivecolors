@@ -3,9 +3,11 @@ package main
 import (
 	"github.com/rjansen/fivecolors/api"
 	"github.com/rjansen/fivecolors/config"
+	"github.com/rjansen/fivecolors/mtgo"
 	"github.com/rjansen/l"
 	raizelSQL "github.com/rjansen/raizel/sql"
 	"net/http"
+	"os"
 	//"github.com/rjansen/avalon/identity"
 	// _ "github.com/go-sql-driver/mysql"
 	_ "github.com/lib/pq"
@@ -31,6 +33,28 @@ func init() {
 }
 
 func main() {
+	// if true {
+	// 	var (
+	// 		// mtgoDeckPath       = "/Users/raphaeljansen/Storage/fivecolors/mtgo/Jeskai Control.csv"
+	// 		mtgoCollectionPath = "/Users/raphaeljansen/Storage/fivecolors/mtgo/MTGOCollection-20170205.csv"
+	// 	)
+	// 	collectionReader, err := os.Open(mtgoCollectionPath)
+	// 	if err != nil {
+	// 		panic(err)
+	// 	}
+	// 	if err := mtgo.ImportCollection(collectionReader); err != nil {
+	// 		panic(err)
+	// 	}
+
+	// 	// mtgoDeckReader, err := os.Open(mtgoDeckPath)
+	// 	// if err != nil {
+	// 	// 	panic(err)
+	// 	// }
+	// 	// if err := mtgo.ImportDeck(mtgoDeckReader); err != nil {
+	// 	// 	panic(err)
+	// 	// }
+	// 	return
+	// }
 	// http.Handle("/identity/", security.NewIdentityHandler())
 	http.HandleFunc("/api/players/", api.NewAnonPlayerHandler())
 	http.HandleFunc("/api/cards/", api.NewAnonCardHandler())
