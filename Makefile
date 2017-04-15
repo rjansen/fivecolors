@@ -13,7 +13,6 @@ PKG_COVERAGE   	:= $(NAME).pkg.coverage
 ETC_DIR := ./etc
 CONF_DIR := $(ETC_DIR)/$(NAME)
 CONF_TYPE := yaml
-CONF := $(CONF_DIR)/$(NAME).local.$(CONF_TYPE)
 
 TEST_PKGS := 
 
@@ -26,17 +25,22 @@ default: build
 .PHONY: local
 local: 
 	@echo "Set enviroment to local"
-	$(eval ENV = "local")
+	$(eval ENV = local)
 
 .PHONY: dev
 dev: 
 	@echo "Set enviroment to dev"
-	$(eval ENV = "dev")
+	$(eval ENV = dev)
+
+.PHONY: heroku 
+heroku: 
+	@echo "Set enviroment to heroku"
+	$(eval ENV = heroku)
 
 .PHONY: prod
 prod: 
 	@echo "Set enviroment to prod"
-	$(eval ENV = "prod")
+	$(eval ENV = prod)
 
 .PHONY: check_env
 check_env:
@@ -51,7 +55,7 @@ build:
 
 .PHONY: run
 run: build
-	./$(NAME) -ecf $(CONF)
+	./$(NAME) -ecf $(CONF_DIR)/$(NAME).$(ENV).$(CONF_TYPE)
 
 pkg_data:
 	@echo "Add data pkg for tests"
