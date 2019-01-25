@@ -8,47 +8,34 @@ import (
 	"os/signal"
 	"time"
 
-	"bitbucket.org/raphaeljansen/fivecolors-etl/api"
-	"bitbucket.org/raphaeljansen/fivecolors-etl/config"
-	"bitbucket.org/raphaeljansen/fivecolors-etl/model"
 	"github.com/julienschmidt/httprouter"
 	_ "github.com/lib/pq"
+	"github.com/rjansen/fivecolors/core/api"
 	"github.com/rs/zerolog/log"
 )
 
-func init() {
-	err := config.Init()
-	if err != nil {
-		panic(err)
+func httpRouterHandler(handler http.HandlerFunc) func(http.ResponseWriter, *http.Request, httprouter.Params) {
+	return func(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
+		handler(w, r)
 	}
-	log.Info().Msg("server.init.model.try")
-	err = model.Init()
-	if err != nil {
-		panic(err)
-	}
-	log.Info().Msg("server.init.api.try")
-	err = api.Init(model.NewSchemaConfig())
-	if err != nil {
-		panic(err)
-	}
-	log.Info().Msg("server.initialized")
 }
 
-func healthCheck(w http.ResponseWriter, r *http.Request, p httprouter.Params) {
+func healthCheck(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusOK)
 	fmt.Fprint(w, "alive")
 }
 
 func main() {
+	setup()
 	log.Info().Msg("server.start")
 	stop := make(chan os.Signal, 1)
 	signal.Notify(stop, os.Interrupt)
 
 	log.Info().Msg("server.router.init")
 	router := httprouter.New()
-	router.GET("/api/healthcheck", healthCheck)
-	router.GET("/api/query", api.GraphQL)
-	router.POST("/api/query", api.GraphQL)
+	router.GET("/api/healthcheck", httpRouterHandler(healthCheck))
+	router.GET("/api/query", httpRouterHandler(api.GraphQL))
+	router.POST("/api/query", httpRouterHandler(api.GraphQL))
 
 	log.Info().Str("address", api.BindAddress()).Msg("server.create")
 	server := &http.Server{
