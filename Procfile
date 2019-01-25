@@ -1,1 +1,0 @@
-web: fivecolors -ecf etc/fivecolors/fivecolors.yaml
