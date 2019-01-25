@@ -4,7 +4,7 @@ sudo: true
 go:
     - 1.11.x
 
-install: sudo make deps
+install: sudo make setup
 
 # before_script:
 #     - sudo /etc/init.d/postgresql stop

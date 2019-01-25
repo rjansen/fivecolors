@@ -43,6 +43,14 @@ install.deps: $(TMP_DIR)
 		mv -f gotestsum /usr/local/bin \
 	)
 	gotestsum --help > /dev/null 2>&1
+	which codecov || (\
+		cd $(TMP_DIR) && \
+		curl -L -o codecov https://codecov.io/bash && \
+		chmod a+x codecov && \
+		mv -f codecov /usr/local/bin \
+	)
+	codecov -h > /dev/null 2>&1
+
 
 .PHONY: install.debugdeps
 install.debugdeps:

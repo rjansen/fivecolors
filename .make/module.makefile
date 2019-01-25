@@ -63,3 +63,10 @@ coverage.html: coverage
 	@echo "$(REPO)@$(BUILD) coverage.html"
 	cd $(MODULE_DIR) && go tool cover -html=$(COVERAGE_FILE) -o $(COVERAGE_HTML)
 	@open $(COVERAGE_HTML) || google-chrome $(COVERAGE_HTML) || google-chrome-stable $(COVERAGE_HTML)
+
+.PHONY: coverage.push
+coverage.push:
+	@echo "$(REPO) coverage.push"
+	@#download codecov script and push report with oneline cmd
+	@#curl -sL https://codecov.io/bash | bash -s - -f $(COVERAGE_FILE)$(if $(CODECOV_TOKEN), -t $(CODECOV_TOKEN),)
+	@codecov -f $(COVERAGE_FILE)$(if $(CODECOV_TOKEN), -t $(CODECOV_TOKEN),)
