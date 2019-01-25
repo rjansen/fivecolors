@@ -10,7 +10,8 @@ import (
 )
 
 var (
-	once sync.Once
+	version string
+	once    sync.Once
 )
 
 func setup() {

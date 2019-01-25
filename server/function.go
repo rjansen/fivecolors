@@ -11,7 +11,8 @@ import (
 )
 
 var (
-	once sync.Once
+	version string
+	once    sync.Once
 )
 
 func setup() {
@@ -19,6 +20,7 @@ func setup() {
 	if err != nil {
 		panic(err)
 	}
+	log.Logger = log.With().Str("version", version).Logger()
 	log.Info().Msg("server.init.model.try")
 	err = model.Init()
 	if err != nil {

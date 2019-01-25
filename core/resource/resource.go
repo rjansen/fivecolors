@@ -5,7 +5,6 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/julienschmidt/httprouter"
 	"github.com/rjansen/fivecolors/core/errors"
 	"github.com/rjansen/fivecolors/core/util"
 	"github.com/rjansen/fivecolors/core/validator"
@@ -51,7 +50,7 @@ func DataDir() string {
 	return dataDir
 }
 
-func ReadAsset(w http.ResponseWriter, r *http.Request, p httprouter.Params) {
+func ReadAsset(w http.ResponseWriter, r *http.Request) {
 	c := util.CreateContext(context.WithValue(r.Context(), "user", resourceUser), time.Minute)
 	c.Info().Str("path", r.URL.Path).Interface("user", c.Value("user")).Msg("resource.asset.request.try")
 	assetServer.ServeHTTP(w, r)
