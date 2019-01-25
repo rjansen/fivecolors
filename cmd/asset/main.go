@@ -8,10 +8,10 @@ import (
 	"os/signal"
 	"time"
 
-	"bitbucket.org/raphaeljansen/fivecolors-etl/config"
-	"bitbucket.org/raphaeljansen/fivecolors-etl/resource"
 	"github.com/julienschmidt/httprouter"
 	_ "github.com/lib/pq"
+	"github.com/rjansen/fivecolors/core/config"
+	"github.com/rjansen/fivecolors/core/resource"
 	"github.com/rs/zerolog/log"
 )
 
@@ -65,7 +65,8 @@ func main() {
 	<-stop
 
 	log.Info().Str("address", resource.BindAddress()).Msg("asset.shutdown")
-	shutDownCtx, _ := context.WithTimeout(context.Background(), 5*time.Second)
+	shutDownCtx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
 	server.Shutdown(shutDownCtx)
 	log.Info().Str("address", resource.BindAddress()).Msg("asset.gracefully.stoped")
 	log.Info().Msg("asset.end")

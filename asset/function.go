@@ -1,12 +1,11 @@
-package server
+package asset
 
 import (
 	"net/http"
 	"sync"
 
-	"github.com/rjansen/fivecolors/core/api"
 	"github.com/rjansen/fivecolors/core/config"
-	"github.com/rjansen/fivecolors/core/model"
+	"github.com/rjansen/fivecolors/core/resource"
 	"github.com/rs/zerolog/log"
 )
 
@@ -19,17 +18,13 @@ func setup() {
 	if err != nil {
 		panic(err)
 	}
-	log.Info().Msg("server.init.model.try")
-	err = model.Init()
+	log.Logger = log.With().Str("version", version).Logger()
+	log.Info().Msg("asset.resource.init.try")
+	err = resource.Init()
 	if err != nil {
 		panic(err)
 	}
-	log.Info().Msg("server.init.api.try")
-	err = api.Init(model.NewSchemaConfig())
-	if err != nil {
-		panic(err)
-	}
-	log.Info().Msg("server.initialized")
+	log.Info().Msg("asset.initialized")
 }
 
 func Handler(w http.ResponseWriter, r *http.Request) {
@@ -38,5 +33,5 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 			setup()
 		},
 	)
-	api.GraphQL(w, r)
+	resource.ReadAsset(w, r)
 }

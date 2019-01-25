@@ -1,5 +1,5 @@
 FUNCTION_NAME              ?= $(MODULE_NAME)
-FUNCTION_LIST              := fivecolorsd
+FUNCTION_LIST              := server asset
 FUNCTION_RUNTIME           := go111
 FUNCTION_ENTRYPOINT        ?= Handler
 FUNCTION_TIMEOUT           ?= 60
