@@ -49,6 +49,7 @@ bench:
 .PHONY: coverage
 coverage: $(TMP_DIR)
 	@echo "$(REPO)@$(BUILD) coverage"
+	ls -ld $(TMP_DIR)
 	@touch $(COVERAGE_FILE)
 	cd $(MODULE_DIR) && gotestsum -f short-verbose -- -tags=integration -v -run $(TESTS) \
 			  -covermode=atomic -coverpkg=$(PKGS) -coverprofile=$(COVERAGE_FILE) $(TEST_PKGS)
