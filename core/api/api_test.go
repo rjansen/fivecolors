@@ -33,7 +33,7 @@ func (scenario *testGraphQL) setup(t *testing.T) {
 		repository    = raizelmock.NewMockRepository()
 		errLogger     = l.Register(&roots, l.NewZapLoggerDefault())
 		errRepository = raizel.Register(&roots, repository)
-		errSchema     = Register(&roots, mustGetSchema(newMockSchema()))
+		errSchema     = Register(&roots, mustGetSchema(NewMockSchema()))
 	)
 	require.Nil(t, errLogger, "setup logger error")
 	require.Nil(t, errRepository, "setup repository error")

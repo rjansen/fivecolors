@@ -16,30 +16,23 @@ var (
 	serverHandler http.HandlerFunc
 )
 
-func setup() {
-	err := config.Init()
+func newTree(schema graphql.Schema) yggdrasil.Tree {
+	var (
+		roots = yggdrasil.NewRoots()
+		err = api.Register(&roots, schema)
+	)
 	if err != nil {
 		panic(err)
 	}
-	log.Logger = log.With().Str("version", version).Logger()
-	log.Info().Msg("server.init.model.try")
-	err = model.Init()
-	if err != nil {
-		panic(err)
-	}
-	log.Info().Msg("server.init.api.try")
-	err = api.Init(model.NewSchemaConfig())
-	if err != nil {
-		panic(err)
-	}
-	log.Info().Msg("server.initialized")
+	return roots.NewTreeDefault()
 }
 
 func Handler(w http.ResponseWriter, r *http.Request) {
 	once.Do(
 		func() {
-			setup()
-			serverHandler = api.GraphQL
+			serverHandler = api.NewGraphQLHandler(
+				newTree(api.NewMockSchema())
+			)
 		},
 	)
 	serverHandler(w, r)

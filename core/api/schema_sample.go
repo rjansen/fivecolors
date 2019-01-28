@@ -149,7 +149,7 @@ var queryType = graphql.NewObject(
 	},
 )
 
-func newMockSchema() (graphql.Schema, error) {
+func NewMockSchema() (graphql.Schema, error) {
 	return graphql.NewSchema(
 		graphql.SchemaConfig{
 			Query: queryType,

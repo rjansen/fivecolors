@@ -27,7 +27,7 @@ func TestRegister(test *testing.T) {
 	scenarios := []testRegister{
 		{
 			name:   "Register the Repository reference",
-			schema: mustGetSchema(newMockSchema()),
+			schema: mustGetSchema(NewMockSchema()),
 		},
 	}
 
@@ -70,7 +70,7 @@ func TestReference(test *testing.T) {
 		{
 			name: "Access the Repository Reference",
 			references: map[yggdrasil.Path]yggdrasil.Reference{
-				schemaPath: yggdrasil.NewReference(mustGetSchema(newMockSchema())),
+				schemaPath: yggdrasil.NewReference(mustGetSchema(NewMockSchema())),
 			},
 		},
 		{
