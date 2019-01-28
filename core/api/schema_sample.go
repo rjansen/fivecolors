@@ -83,15 +83,17 @@ var mockEntityType = graphql.NewObject(
 			"float": &graphql.Field{
 				Type: graphql.Float,
 			},
-			"dateTime": &graphql.Field{
+			"date_time": &graphql.Field{
 				Type: graphql.DateTime,
 			},
 			"boolean": &graphql.Field{
 				Type: graphql.Boolean,
 			},
-			"object": &graphql.Field{
-				Type: objectType,
-			},
+			/*
+				"object": &graphql.Field{
+					Type: graphql.NewList(objectType),
+				},
+			*/
 		},
 	},
 )
@@ -103,7 +105,7 @@ var mockEntityResponseType = graphql.NewObject(
 			"tid": &graphql.Field{
 				Type: graphql.String,
 			},
-			"mockEntity": &graphql.Field{
+			"entity": &graphql.Field{
 				Type: mockEntityType,
 			},
 		},
@@ -120,27 +122,33 @@ var queryType = graphql.NewObject(
 				Type: meResponseType,
 				Resolve: func(p graphql.ResolveParams) (interface{}, error) {
 					return map[string]interface{}{
-						"tid":  p.Context.Value("tid"),
-						"user": p.Context.Value("user"),
+						"tid": util.NewUUID(),
+						"user": map[string]interface{}{
+							"id":   "fivecolorsd",
+							"name": "Fivecolors D",
+						},
 					}, nil
 				},
 			},
 			"mockEntity": &graphql.Field{
 				Type: mockEntityResponseType,
 				Resolve: func(p graphql.ResolveParams) (interface{}, error) {
-					return mock.MockEntity{
-						ID:       util.NewUUID(),
-						String:   "string field",
-						Integer:  999,
-						Float:    999.99,
-						DateTime: time.Now().UTC(),
-						Boolean:  false,
-						Object: map[string]interface{}{
-							"key_string":   "string value",
-							"key_integer":  int64(999),
-							"key_float":    float64(999.99),
-							"key_boolean":  true,
-							"key_datetime": time.Now().UTC(),
+					return map[string]interface{}{
+						"tid": util.NewUUID(),
+						"entity": mock.MockEntity{
+							ID:       util.NewUUID(),
+							String:   "string field",
+							Integer:  999,
+							Float:    999.99,
+							DateTime: time.Now().UTC(),
+							Boolean:  false,
+							Object: mock.Object{
+								"key_string":   "string value",
+								"key_integer":  int64(999),
+								"key_float":    float64(999.99),
+								"key_boolean":  true,
+								"key_datetime": time.Now().UTC(),
+							},
 						},
 					}, nil
 				},

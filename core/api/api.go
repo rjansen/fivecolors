@@ -7,55 +7,10 @@ import (
 	"strings"
 
 	"github.com/graphql-go/graphql"
-	"github.com/rjansen/fivecolors/core/errors"
-	"github.com/rjansen/fivecolors/core/util"
 	"github.com/rjansen/fivecolors/core/validator"
 	"github.com/rjansen/l"
 	"github.com/rjansen/yggdrasil"
-	"github.com/rs/zerolog/log"
 )
-
-var (
-	ErrInit         = errors.New("api.ErrInit")
-	ErrBlankContext = errors.New("api.ErrBlankContext")
-	bindAddress     string
-	apiSchema       graphql.Schema
-	apiUser         interface{}
-)
-
-func Init(config graphql.SchemaConfig) error {
-	var (
-		// TODO: Move this flag to server context
-		addr = util.Getenv("SERVER_BINDADDRESS", "127.0.0.1:8080")
-	)
-	err := validator.Validate(
-		validator.ValidateIsBlank(addr),
-	)
-	if err != nil {
-		log.Error().Err(err).Msg("api.init.validate.err")
-		return err
-	}
-	s, err := graphql.NewSchema(config)
-	if err != nil {
-		log.Error().Err(err).Msg("api.init.schema.err")
-		return err
-	}
-	apiSchema = s
-	bindAddress = addr
-	apiUser = struct {
-		ID   string `json:"id"`
-		Name string `json:"name"`
-	}{util.NewUUID(), "yuno.gasai"}
-	return nil
-}
-
-func BindAddress() string {
-	return bindAddress
-}
-
-func Schema() graphql.Schema {
-	return apiSchema
-}
 
 type query struct {
 	Query         string                 `json:"query"`

@@ -21,7 +21,7 @@ type testHandler struct {
 
 func (scenario *testHandler) setup(*testing.T) {
 	r := httptest.NewRequest(
-		"POST", "/query", strings.NewReader(scenario.body),
+		"POST", "/", strings.NewReader(scenario.body),
 	)
 	r.Header.Set("content-type", scenario.contentType)
 

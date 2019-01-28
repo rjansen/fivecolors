@@ -143,6 +143,14 @@ func TestGraphQL(test *testing.T) {
 			responseStatus: http.StatusOK,
 		},
 		{
+			name:           "When a POST request body is graphql executes the query and returns ok with query results",
+			method:         http.MethodPost,
+			path:           "/query",
+			body:           "{mockEntity{tid,entity{id,string,float,integer,date_time}}}",
+			contentType:    "application/graphql",
+			responseStatus: http.StatusOK,
+		},
+		{
 			name:           "When a POST request body is a valid json executes the query and returns ok with query results",
 			method:         http.MethodPost,
 			path:           "/query",
@@ -162,6 +170,15 @@ func TestGraphQL(test *testing.T) {
 				graphql := NewGraphQLHandler(scenario.tree)
 				graphql(scenario.response, scenario.request)
 				result := scenario.response.Result()
+				/*
+					var (
+						resultMap map[string]interface{}
+						errDecode = json.NewDecoder(result.Body).Decode(&resultMap)
+					)
+					require.Equal(t, map[string]interface{}{}, resultMap, "result invalid instance")
+					require.Nil(t, errDecode, "response body invalid")
+					require.NotZero(t, resultMap, "result invalid")
+				*/
 				require.Equal(t, scenario.responseStatus, result.StatusCode, "invalid response statuscode")
 			},
 		)
