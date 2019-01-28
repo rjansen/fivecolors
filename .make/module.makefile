@@ -33,7 +33,7 @@ vet:
 
 .PHONY: test
 test:
-	@echo "$(REPO)@$(BUILD) test"
+	@echo "$(REPO)@$(BUILD) test $(REPO) - $(TEST_PKGS)"
 	cd $(MODULE_DIR) && gotestsum -f short-verbose -- -v -race -run $(TESTS) $(TEST_PKGS)
 
 .PHONY: itest

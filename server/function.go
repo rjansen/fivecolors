@@ -11,8 +11,9 @@ import (
 )
 
 var (
-	version string
-	once    sync.Once
+	version       string
+	once          sync.Once
+	serverHandler http.HandlerFunc
 )
 
 func setup() {
@@ -38,7 +39,8 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 	once.Do(
 		func() {
 			setup()
+			serverHandler = api.GraphQL
 		},
 	)
-	api.GraphQL(w, r)
+	serverHandler(w, r)
 }

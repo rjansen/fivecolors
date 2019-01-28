@@ -9,5 +9,3 @@ define SQL_DSN       =
 $(SQL_DRIVER)://$(POSTGRES_USER):$(POSTGRES_PASSWORD)@$(POSTGRES_HOST):$(POSTGRES_PORT)/$(POSTGRES_DATABASE)?sslmode=disable
 endef
 POSTGRES_SCRIPTS_DIR ?= $(BASE_DIR)/etc/test/integration/postgres/scripts
-
-

@@ -1,16 +1,17 @@
 package api
 
 import (
-	"context"
 	"encoding/json"
 	"io/ioutil"
 	"net/http"
-	"time"
+	"strings"
 
 	"github.com/graphql-go/graphql"
 	"github.com/rjansen/fivecolors/core/errors"
 	"github.com/rjansen/fivecolors/core/util"
 	"github.com/rjansen/fivecolors/core/validator"
+	"github.com/rjansen/l"
+	"github.com/rjansen/yggdrasil"
 	"github.com/rs/zerolog/log"
 )
 
@@ -62,52 +63,68 @@ type query struct {
 	Variables     map[string]interface{} `json:"variables"`
 }
 
-func GraphQL(w http.ResponseWriter, r *http.Request) {
-	c := util.CreateContext(context.WithValue(r.Context(), "user", apiUser), time.Minute)
-	c.Info().Str("tid", c.Value("tid").(string)).Interface("user", c.Value("user")).Msg("api.grapql.request.try")
-	var q query
-	if r.Method == http.MethodGet {
+func NewGraphQLHandler(tree yggdrasil.Tree) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		GraphQL(tree, w, r)
+	}
+}
+
+func GraphQL(tree yggdrasil.Tree, w http.ResponseWriter, r *http.Request) {
+	var (
+		logger      = l.MustReference(tree)
+		schema      = MustReference(tree)
+		contentType = r.Header.Get("Content-Type")
+		q           query
+	)
+	logger.Info("graphql.request.try",
+		l.NewValue("tid", r.Context().Value("tid")),
+		l.NewValue("user", r.Context().Value("user")),
+	)
+	switch r.Method {
+	case http.MethodGet:
 		q = query{Query: r.URL.Query().Get("query")}
-	} else {
-		switch r.Header.Get("Content-Type") {
-		case "application/graphql":
+	case http.MethodPost:
+		switch {
+		case strings.HasPrefix("application/graphql", contentType):
 			body, err := ioutil.ReadAll(r.Body)
 			if err != nil {
-				c.Error().Err(err).Msg("graphql.request.body.err")
-				w.WriteHeader(http.StatusUnprocessableEntity)
+				logger.Error("graphql.request.err", l.NewValue("error", err))
+				w.WriteHeader(http.StatusBadRequest)
 				return
 			}
 			q = query{Query: string(body)}
-		case "application/json":
-			fallthrough
 		default:
 			err := json.NewDecoder(r.Body).Decode(&q)
 			if err != nil {
-				c.Error().Err(err).Msg("graphql.request.body.err")
-				w.WriteHeader(http.StatusUnprocessableEntity)
+				logger.Error("graphql.request.err", l.NewValue("error", err))
+				w.WriteHeader(http.StatusBadRequest)
 				return
 			}
 		}
+	default:
+		w.WriteHeader(http.StatusMethodNotAllowed)
+		return
 	}
 	if err := validator.IsBlank(q.Query); err != nil {
-		c.Error().Err(err).Msg("api.grapql.request.blank.err")
-		w.WriteHeader(http.StatusUnprocessableEntity)
+		logger.Error("graphql.request.err", l.NewValue("error", err))
+		w.WriteHeader(http.StatusBadRequest)
 		return
 	}
 	w.Header().Set("content-type", "application/json")
-	c.Info().Str("query", q.Query).Msg("api.grapql.request")
-	result := graphql.Do(graphql.Params{
-		Schema:        apiSchema,
-		RequestString: q.Query,
-		Context:       c,
-	})
-	c.Info().Interface("result", result).Str("query", q.Query).Msg("api.grapql.response")
+	logger.Debug("graphql.query.try", l.NewValue("query", q))
+	result := graphql.Do(
+		graphql.Params{
+			Schema:        schema,
+			RequestString: q.Query,
+			Context:       r.Context(),
+		},
+	)
 	if len(result.Errors) > 0 {
-		c.Error().Interface("err", result.Errors).Msg("api.graphql.request.err")
+		logger.Error("graphql.query.err", l.NewValue("query", q), l.NewValue("result", result))
 		w.WriteHeader(http.StatusInternalServerError)
-		json.NewEncoder(w).Encode(result)
-		return
+	} else {
+		logger.Debug("graphql.query.result", l.NewValue("query", q), l.NewValue("result", result))
+		w.WriteHeader(http.StatusOK)
 	}
-	w.WriteHeader(http.StatusOK)
 	json.NewEncoder(w).Encode(result)
 }
