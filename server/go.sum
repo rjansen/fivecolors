@@ -42,6 +42,8 @@ github.com/prometheus/common v0.0.0-20180801064454-c7de2306084e/go.mod h1:daVV7q
 github.com/prometheus/procfs v0.0.0-20180725123919-05ee40e3a273/go.mod h1:c3At6R/oaqEKCNdg8wHV1ftS6bRYblBhIjjI8uT2IGk=
 github.com/rjansen/fivecolors/core v0.0.8 h1:DQOSpaOdFlehM3/EPngfT0vvmitlgm8BgzQU6vVW170=
 github.com/rjansen/fivecolors/core v0.0.8/go.mod h1:mY6RM2+QDfRIXzKL2zw+hIj0j6QIslGdAy+4OdKFn0g=
+github.com/rjansen/fivecolors/core v0.0.9 h1:2cdL7UOeTQnDF91QpZulpBqBTZdParNyyGr4p2H8X2Y=
+github.com/rjansen/fivecolors/core v0.0.9/go.mod h1:9oLrhtSgdF4KPasZ0xe4asT3jWLFtiGTWh5o0CHb36E=
 github.com/rjansen/l v0.0.0-20190127231537-1cd311bd3239 h1:dboSlKnXXPijPfpA51irhSWGj2TxG2ctz9VxYvCGJLQ=
 github.com/rjansen/l v0.0.0-20190127231537-1cd311bd3239/go.mod h1:57QQbQVubuS7DMwS9iNynECe+gg3HTlce+W/rVTLXuY=
 github.com/rjansen/migi v0.0.0-20190113201353-309b13ecc08f h1:Ac7wnS1jFs+2QzeCC3t+RLGRAiklS2aHqaEGjsf4tcY=
