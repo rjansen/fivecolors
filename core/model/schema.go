@@ -1,210 +1,79 @@
 package model
 
 import (
+	stdsql "database/sql"
 	"fmt"
 	"strings"
 
 	"github.com/graphql-go/graphql"
 	"github.com/lib/pq"
 	"github.com/rjansen/fivecolors/core/errors"
+	"github.com/rjansen/l"
+	"github.com/rjansen/raizel"
+	"github.com/rjansen/raizel/sql"
+	"github.com/rjansen/yggdrasil"
 )
 
 var (
 	ErrInvalidState = errors.New("ErrInvalidState")
 )
 
-var rarityIDType = graphql.NewEnum(
-	graphql.EnumConfig{
-		Name: "RarityID",
-		Values: graphql.EnumValueConfigMap{
-			"Common": &graphql.EnumValueConfig{
-				Value: NewRarityID(RarityCommon),
-			},
-			"Uncommon": &graphql.EnumValueConfig{
-				Value: NewRarityID(RarityUncommon),
-			},
-			"Rare": &graphql.EnumValueConfig{
-				Value: NewRarityID(RarityRare),
-			},
-			"MythcRare": &graphql.EnumValueConfig{
-				Value: NewRarityID(RarityMythicRare),
-			},
-		},
-	},
-)
-
-var rarityType = graphql.NewObject(
-	graphql.ObjectConfig{
-		Name: "Rarity",
-		Fields: graphql.Fields{
-			"id": &graphql.Field{
-				Type: graphql.String,
-			},
-			"name": &graphql.Field{
-				Type: graphql.String,
-			},
-			"alias": &graphql.Field{
-				Type: graphql.String,
-			},
-		},
-	},
-)
-
-var setAssetType = graphql.NewObject(
-	graphql.ObjectConfig{
-		Name: "SetAsset",
-		Fields: graphql.Fields{
-			"Common": &graphql.Field{
-				Type: graphql.String,
-			},
-			"Uncommon": &graphql.Field{
-				Type: graphql.String,
-			},
-			"Rare": &graphql.Field{
-				Type: graphql.String,
-			},
-			"MythcRare": &graphql.Field{
-				Type: graphql.String,
-			},
-		},
-	},
-)
-
-var setType = graphql.NewObject(
-	graphql.ObjectConfig{
-		Name: "Set",
-		Fields: graphql.Fields{
-			"id": &graphql.Field{
-				Type: graphql.String,
-			},
-			"name": &graphql.Field{
-				Type: graphql.String,
-			},
-			"alias": &graphql.Field{
-				Type: graphql.String,
-			},
-			"asset": &graphql.Field{
-				Type: setAssetType,
-			},
-		},
-	},
-)
-
-var cardType = graphql.NewObject(
-	graphql.ObjectConfig{
-		Name: "Card",
-		Fields: graphql.Fields{
-			"id": &graphql.Field{
-				Type: graphql.String,
-			},
-			"name": &graphql.Field{
-				Type: graphql.String,
-			},
-			"idExternal": &graphql.Field{
-				Type: graphql.String,
-			},
-			"numberCost": &graphql.Field{
-				Type: graphql.Float,
-			},
-			"idAsset": &graphql.Field{
-				Type: graphql.String,
-			},
-			"types": &graphql.Field{
-				Type:    graphql.NewList(graphql.String),
-				Resolve: cardResolveTypes,
-			},
-			"costs": &graphql.Field{
-				Type:    graphql.NewList(graphql.String),
-				Resolve: cardResolveCosts,
-			},
-			"rules": &graphql.Field{
-				Type:    graphql.NewList(graphql.String),
-				Resolve: cardResolveRules,
-			},
-			"rarity": &graphql.Field{
-				Type:    rarityType,
-				Resolve: cardResolveRarity,
-			},
-			"set": &graphql.Field{
-				Type:    setType,
-				Resolve: cardResolveSet,
-			},
-		},
-	},
-)
-
-var queryType = graphql.NewObject(
-	graphql.ObjectConfig{
-		Name: "Query",
-		Fields: graphql.Fields{
-			"set": &graphql.Field{
-				Type: setType,
-				Args: graphql.FieldConfigArgument{
-					"id": &graphql.ArgumentConfig{
-						Type: graphql.NewNonNull(graphql.String),
+func newQueryType(tree yggdrasil.Tree) *graphql.Object {
+	return graphql.NewObject(
+		graphql.ObjectConfig{
+			Name: "Query",
+			Fields: graphql.Fields{
+				"set": &graphql.Field{
+					Type: setType,
+					Args: graphql.FieldConfigArgument{
+						"id": &graphql.ArgumentConfig{
+							Type: graphql.NewNonNull(graphql.String),
+						},
 					},
+					Resolve: resolveSet,
 				},
-				Resolve: resolveSet,
-			},
-			"setBy": &graphql.Field{
-				Type: graphql.NewList(setType),
-				Args: graphql.FieldConfigArgument{
-					"name": &graphql.ArgumentConfig{
-						Type: graphql.String,
+				"setBy": &graphql.Field{
+					Type: graphql.NewList(setType),
+					Args: graphql.FieldConfigArgument{
+						"name": &graphql.ArgumentConfig{
+							Type: graphql.String,
+						},
+						"alias": &graphql.ArgumentConfig{
+							Type: graphql.String,
+						},
 					},
-					"alias": &graphql.ArgumentConfig{
-						Type: graphql.String,
-					},
+					Resolve: resolveSet,
 				},
-				Resolve: resolveSet,
-			},
-			"card": &graphql.Field{
-				Type: cardType,
-				Args: graphql.FieldConfigArgument{
-					"id": &graphql.ArgumentConfig{
-						Type: graphql.NewNonNull(graphql.String),
+				"card": &graphql.Field{
+					Type: cardType,
+					Args: graphql.FieldConfigArgument{
+						"id": &graphql.ArgumentConfig{
+							Type: graphql.NewNonNull(graphql.String),
+						},
 					},
+					Resolve: newCardResolver(tree),
 				},
-				Resolve: resolveCard,
-			},
-			"cardBy": &graphql.Field{
-				Type: graphql.NewList(cardType),
-				Args: graphql.FieldConfigArgument{
-					"set": &graphql.ArgumentConfig{
-						Type: graphql.String,
+				"cardBy": &graphql.Field{
+					Type: graphql.NewList(cardType),
+					Args: graphql.FieldConfigArgument{
+						"filter": &graphql.ArgumentConfig{
+							Type: graphql.NewNonNull(cardFilterInputType),
+						},
 					},
-					"name": &graphql.ArgumentConfig{
-						Type: graphql.String,
-					},
-					"types": &graphql.ArgumentConfig{
-						Type: graphql.String,
-					},
-					"numberCost": &graphql.ArgumentConfig{
-						Type: graphql.Float,
-					},
-					"rarity": &graphql.ArgumentConfig{
-						Type: graphql.String,
-					},
-					"costs": &graphql.ArgumentConfig{
-						Type: graphql.String,
-					},
-					"rules": &graphql.ArgumentConfig{
-						Type: graphql.String,
-					},
+					Resolve: newCardByResolver(tree),
 				},
-				Resolve: resolveCardBy,
 			},
 		},
-	},
-)
-
-func NewSchema() (graphql.Schema, error) {
-	return graphql.NewSchema(NewSchemaConfig())
+	)
 }
 
-func NewSchemaConfig() graphql.SchemaConfig {
+func NewSchema(tree yggdrasil.Tree) (graphql.Schema, error) {
+	return graphql.NewSchema(NewSchemaConfig(tree))
+}
+
+func NewSchemaConfig(tree yggdrasil.Tree) graphql.SchemaConfig {
 	return graphql.SchemaConfig{
-		Query: queryType,
+		Query: newQueryType(tree),
 	}
 }
 
@@ -257,13 +126,17 @@ func resolveSet(p graphql.ResolveParams) (interface{}, error) {
 	return set, err
 }
 
-func resolveCard(p graphql.ResolveParams) (interface{}, error) {
-	c, err := NewContext(p.Context)
-	if err != nil {
-		return nil, err
+func newCardResolver(tree yggdrasil.Tree) graphql.FieldResolveFn {
+	return func(params graphql.ResolveParams) (interface{}, error) {
+		return resolveCard(tree, params)
 	}
+}
+
+func resolveCard(tree yggdrasil.Tree, p graphql.ResolveParams) (interface{}, error) {
 	var (
-		s = `select id, name, number_cost, id_external, id_asset,
+		db     = sql.MustReference(tree)
+		logger = l.MustReference(tree)
+		s      = `select id, name, number_cost, id_external, id_asset,
 					id_rarity, id_set, created_at, deleted_at
 			 from card where `
 		q          string
@@ -288,48 +161,46 @@ func resolveCard(p graphql.ResolveParams) (interface{}, error) {
 		}
 		q = s + strings.Join(w, " and ")
 	}
-	var card Card
-	fetchCard := func(m *Context, s Scanner) error {
-		m.Info().Msg("api.query.fetch.card")
-		var deletedAt pq.NullTime
-		err := s.Scan(
+	logger.Debug("schema.resolve.card.sql", l.NewValue("sql", q), l.NewValue("arguments", a))
+	var (
+		card      Card
+		deletedAt pq.NullTime
+		row       = db.QueryRow(q, a...)
+		err       = row.Scan(
 			&card.ID, &card.Name, &card.NumberCost, &card.IDExternal, &card.IDAsset,
 			&card.IDRarity, &card.IDSet, &card.CreatedAt, &deletedAt,
 		)
-		if err != nil {
-			m.Error().Err(err).Msg("api.query.fetch.card.err")
-			return err
-		}
-		if deletedAt.Valid {
-			card.DeletedAt = deletedAt.Time
-		}
-		m.Info().Interface("card", card).Msg("api.query.fetched.card")
-		return nil
-	}
-	c.Info().Str("query", q).Msg("api.query.card.try")
-	err = QueryOne(c, q, fetchCard, a...)
+	)
 	if err != nil {
-		if err == ErrNotFound {
-			return nil, nil
+		if err == stdsql.ErrNoRows {
+			return nil, raizel.ErrNotFound
 		}
-		c.Error().Err(err).Str("query", q).Msg("api.query.card.err")
+		logger.Error("schema.resolve.card.err_fetch", l.NewValue("error", err))
 		return nil, err
 	}
-	c.Info().Err(err).Interface("card", card).Msg("api.query.card.result")
+	if deletedAt.Valid {
+		card.DeletedAt = deletedAt.Time
+	}
+	logger.Debug("schema.resolve.card.fetched", l.NewValue("card", card))
 	return card, err
 }
 
-func resolveCardBy(p graphql.ResolveParams) (interface{}, error) {
-	c, err := NewContext(p.Context)
-	if err != nil {
-		return nil, err
+func newCardByResolver(tree yggdrasil.Tree) graphql.FieldResolveFn {
+	return func(params graphql.ResolveParams) (interface{}, error) {
+		return resolveCardBy(tree, params)
 	}
+}
+
+func resolveCardBy(tree yggdrasil.Tree, p graphql.ResolveParams) (interface{}, error) {
 	var (
-		s = `select id, name, number_cost, id_external, id_asset,
+		db     = sql.MustReference(tree)
+		logger = l.MustReference(tree)
+		s      = `select id, name, number_cost, id_external, id_asset,
 					id_rarity, id_set, created_at, deleted_at
 			 from card where `
 		q          string
 		a          []interface{}
+		w          []string
 		fieldAlias = map[string]func(string, int) string{
 			"set": func(key string, index int) string {
 				return fmt.Sprintf("id_set = $%d", index)
@@ -348,7 +219,6 @@ func resolveCardBy(p graphql.ResolveParams) (interface{}, error) {
 			},
 		}
 	)
-	var w []string
 	for k, v := range p.Args {
 		if alias, ok := fieldAlias[k]; ok {
 			w = append(w, alias(k, len(w)+1))
@@ -357,42 +227,37 @@ func resolveCardBy(p graphql.ResolveParams) (interface{}, error) {
 	}
 	q = s + strings.Join(w, " and ")
 
-	var cards = make([]Card, 0, 200)
-	fetchCards := func(m *Context, s Iterator) error {
-		m.Info().Msg("api.query.fetch.cardby")
-		for s.Next() {
-			var (
-				card      Card
-				deletedAt pq.NullTime
-			)
-			err := s.Scan(
-				&card.ID, &card.Name, &card.NumberCost, &card.IDExternal, &card.IDAsset,
-				&card.IDRarity, &card.IDSet, &card.CreatedAt, &deletedAt,
-			)
-			if err != nil {
-				m.Error().Err(err).Msg("api.query.fetch.card.err")
-				return err
-			}
-			if deletedAt.Valid {
-				card.DeletedAt = deletedAt.Time
-			}
-			m.Debug().Interface("card", card).Msg("api.query.read.cardby.item")
-			cards = append(cards, card)
-		}
-		m.Info().Int("cardBy.len", len(cards)).Msg("api.query.fetched.cardby")
-		return nil
-	}
-
-	c.Info().Str("query", q).Msg("api.query.cardby.try")
-	err = Query(c, q, fetchCards, a...)
+	logger.Info("schema.resolve.cardby.sql", l.NewValue("query", q), l.NewValue("arguments", a))
+	var (
+		cards     = make([]Card, 0, 200)
+		rows, err = db.Query(q, a...)
+	)
 	if err != nil {
-		if err == ErrNotFound {
-			return nil, nil
+		if err == stdsql.ErrNoRows {
+			return cards, nil
 		}
-		c.Error().Err(err).Str("query", q).Msg("api.query.cardby.err")
+		logger.Error("schema.resolve.cardby.err_execute_sql", l.NewValue("error", err))
 		return nil, err
 	}
-	c.Info().Err(err).Interface("cardBy.len", cards).Msg("api.query.cardby.result")
+	for rows.Next() {
+		var (
+			card      Card
+			deletedAt pq.NullTime
+		)
+		err := rows.Scan(
+			&card.ID, &card.Name, &card.NumberCost, &card.IDExternal, &card.IDAsset,
+			&card.IDRarity, &card.IDSet, &card.CreatedAt, &deletedAt,
+		)
+		if err != nil {
+			logger.Error("schema.resolve.cardby.err_fetch", l.NewValue("error", err))
+			return nil, err
+		}
+		if deletedAt.Valid {
+			card.DeletedAt = deletedAt.Time
+		}
+		cards = append(cards, card)
+	}
+	logger.Info("schema.resolve.cardby.result", l.NewValue("cards.len", len(cards)))
 	return cards, err
 }
 
