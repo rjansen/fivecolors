@@ -1,0 +1,92 @@
+scalar DateTime
+scalar Object
+
+enum RarityId {
+  Common
+  Uncommon
+  Rare
+  MythicRare
+  Special
+  Land
+  Promo
+  Bonus
+}
+
+enum RarityAlias {
+  C
+  U
+  R
+  M
+  S
+  L
+  P
+  B
+}
+
+type Rarity {
+  id: ID!
+  name: String!
+  alias: String!
+}
+
+type Set {
+  id:    ID!
+  name:  String!
+  alias: String!
+  asset: Object!
+  cards: [Card!]!
+  createdAt: DateTime!
+  updatedAt: DateTime
+  deletedAt: DateTime
+}
+
+type Card {
+  id: ID!
+  name: String!
+  types: [String!]!
+  costs: [String!]!
+  numberCost: Float!
+  idExternal: String!
+  orderExternal: String
+  idRarity: String!
+  rarity: Rarity!
+  idSet: String!
+  set: Set!
+  idAsset: String!
+  rules: [String!]
+  rate: Float
+  rateVotes: Int
+  artist: String
+  flavor: String
+  data: Object
+  createdAt: DateTime!
+  updatedAt: DateTime
+  deletedAt: DateTime
+}
+
+input RarityFilter {
+  id: RarityId!
+  alias: RarityAlias!
+}
+
+input SetFilter {
+  id: ID!
+  name: String!
+  alias: String!
+}
+
+input CardFilter {
+  id: ID!
+  name: String!
+  types: [String!]!
+  costs: [String!]!
+  set: SetFilter!
+  rarity: RarityFilter!
+}
+
+type Query {
+  set(id: ID!): Set!
+  card(id: ID!): Card!
+  setBy(filter: SetFilter!): [Set!]!
+  cardBy(filter: CardFilter!): [Card!]!
+}

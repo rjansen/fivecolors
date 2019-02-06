@@ -1,0 +1,25 @@
+# .gqlgen.yml example
+#
+# Refer to https://gqlgen.com/config/
+# for detailed .gqlgen.yml documentation.
+
+schema:
+- core/model/schema.graphql
+
+exec:
+  filename: core/model/generated.go
+  type: generated
+
+resolver:
+  filename: core/model/resolvers.go
+  type: Resolver
+
+model:
+  filename: core/model/types.go
+
+models:
+  Object:
+    model: github.com/rjansen/fivecolors/core/model.Object
+  DateTime:
+    model: github.com/rjansen/fivecolors/core/model.DateTime
+

@@ -1,84 +1,64 @@
 package model
 
 import (
+	"context"
 	stdsql "database/sql"
-	"fmt"
 	"strings"
 
-	"github.com/graphql-go/graphql"
+	"github.com/99designs/gqlgen/graphql"
 	"github.com/lib/pq"
 	"github.com/rjansen/fivecolors/core/errors"
 	"github.com/rjansen/l"
 	"github.com/rjansen/raizel"
 	"github.com/rjansen/raizel/sql"
 	"github.com/rjansen/yggdrasil"
+	"github.com/vektah/gqlparser/ast"
+	"github.com/vektah/gqlparser/parser"
+	"github.com/vektah/gqlparser/validator"
 )
 
 var (
 	ErrInvalidState = errors.New("ErrInvalidState")
 )
 
-func newQueryType(tree yggdrasil.Tree) *graphql.Object {
-	return graphql.NewObject(
-		graphql.ObjectConfig{
-			Name: "Query",
-			Fields: graphql.Fields{
-				"set": &graphql.Field{
-					Type: setType,
-					Args: graphql.FieldConfigArgument{
-						"id": &graphql.ArgumentConfig{
-							Type: graphql.NewNonNull(graphql.String),
-						},
-					},
-					Resolve: resolveSet,
-				},
-				"setBy": &graphql.Field{
-					Type: graphql.NewList(setType),
-					Args: graphql.FieldConfigArgument{
-						"name": &graphql.ArgumentConfig{
-							Type: graphql.String,
-						},
-						"alias": &graphql.ArgumentConfig{
-							Type: graphql.String,
-						},
-					},
-					Resolve: resolveSet,
-				},
-				"card": &graphql.Field{
-					Type: cardType,
-					Args: graphql.FieldConfigArgument{
-						"id": &graphql.ArgumentConfig{
-							Type: graphql.NewNonNull(graphql.String),
-						},
-					},
-					Resolve: newCardResolver(tree),
-				},
-				"cardBy": &graphql.Field{
-					Type: graphql.NewList(cardType),
-					Args: graphql.FieldConfigArgument{
-						"filter": &graphql.ArgumentConfig{
-							Type: graphql.NewNonNull(cardFilterInputType),
-						},
-					},
-					Resolve: newCardByResolver(tree),
-				},
-			},
-		},
-	)
+type Params struct {
+	Query         string                 `json:"query"`
+	OperationName string                 `json:"operationName"`
+	Variables     map[string]interface{} `json:"variables"`
 }
 
-func NewSchema(tree yggdrasil.Tree) (graphql.Schema, error) {
-	return graphql.NewSchema(NewSchemaConfig(tree))
-}
+func Execute(tree yggdrasil.Tree, params Params) *graphql.Response {
+	response := new(graphql.Response)
 
-func NewSchemaConfig(tree yggdrasil.Tree) graphql.SchemaConfig {
-	return graphql.SchemaConfig{
-		Query: newQueryType(tree),
+	doc, parserErr := parser.ParseQuery(&ast.Source{Input: params.Query})
+	if parserErr != nil {
+		response.Errors = append(response.Errors, parserErr)
+		return response
 	}
+
+	schema := NewExecutableSchema(Config{Resolvers: NewResolver()})
+	validateErrs := validator.Validate(schema.Schema(), doc)
+	if validateErrs != nil {
+		response.Errors = append(response.Errors, validateErrs...)
+		return response
+	}
+
+	op := doc.Operations.ForName(params.OperationName)
+	vars, varsErr := validator.VariableValues(schema.Schema(), op, params.Variables)
+	if varsErr != nil {
+		response.Errors = append(response.Errors, varsErr)
+		return response
+	}
+
+	ctx := graphql.WithRequestContext(
+		context.Background(),
+		graphql.NewRequestContext(doc, params.Query, vars),
+	)
+	return schema.Query(ctx, op)
 }
 
-func resolveSet(p graphql.ResolveParams) (interface{}, error) {
-	c, err := NewContext(p.Context)
+func resolveSet(ctx context.Context, id string) (*Set, error) {
+	c, err := NewContext(ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -87,17 +67,16 @@ func resolveSet(p graphql.ResolveParams) (interface{}, error) {
 		q string
 		a []interface{}
 	)
-	if p.Info.FieldName == "set" {
-		q = s + "id = $1"
-		a = append(a, p.Args["id"])
-	} else {
+	q = s + "id = $1"
+	a = append(a, id)
+	/*
 		var w []string
 		for k, v := range p.Args {
 			w = append(w, fmt.Sprintf("%s = $%d", k, len(w)+1))
 			a = append(a, v)
 		}
 		q = s + strings.Join(w, " and ")
-	}
+	*/
 	var set Set
 	fetchSet := func(m *Context, s Scanner) error {
 		m.Info().Msg("api.query.fetch.set")
@@ -108,7 +87,7 @@ func resolveSet(p graphql.ResolveParams) (interface{}, error) {
 			return err
 		}
 		if deletedAt.Valid {
-			set.DeletedAt = deletedAt.Time
+			set.DeletedAt = &deletedAt.Time
 		}
 		m.Info().Interface("set", set).Msg("api.query.fetched.set")
 		return nil
@@ -123,33 +102,26 @@ func resolveSet(p graphql.ResolveParams) (interface{}, error) {
 		return nil, err
 	}
 	c.Info().Err(err).Interface("set", set).Msg("api.query.set.result")
-	return set, err
+	return &set, err
 }
 
-func newCardResolver(tree yggdrasil.Tree) graphql.FieldResolveFn {
-	return func(params graphql.ResolveParams) (interface{}, error) {
-		return resolveCard(tree, params)
-	}
-}
-
-func resolveCard(tree yggdrasil.Tree, p graphql.ResolveParams) (interface{}, error) {
+func resolveCard(tree yggdrasil.Tree, id string) (*Card, error) {
 	var (
 		db     = sql.MustReference(tree)
 		logger = l.MustReference(tree)
 		s      = `select id, name, number_cost, id_external, id_asset,
 					id_rarity, id_set, created_at, deleted_at
 			 from card where `
-		q          string
-		a          []interface{}
-		fieldAlias = map[string]string{
-			"idExternal": "id_external",
-			"idAsset":    "id_asset",
-		}
+		q string
+		a []interface{}
+		// fieldAlias = map[string]string{
+		// 	 "idExternal": "id_external",
+		// 	 "idAsset":    "id_asset",
+		// }
 	)
-	if p.Info.FieldName == "card" {
-		q = s + "id = $1"
-		a = append(a, p.Args["id"])
-	} else {
+	q = s + "id = $1"
+	a = append(a, id)
+	/*
 		var w []string
 		for k, v := range p.Args {
 			if alias, ok := fieldAlias[k]; ok {
@@ -160,7 +132,7 @@ func resolveCard(tree yggdrasil.Tree, p graphql.ResolveParams) (interface{}, err
 			a = append(a, v)
 		}
 		q = s + strings.Join(w, " and ")
-	}
+	*/
 	logger.Debug("schema.resolve.card.sql", l.NewValue("sql", q), l.NewValue("arguments", a))
 	var (
 		card      Card
@@ -179,52 +151,48 @@ func resolveCard(tree yggdrasil.Tree, p graphql.ResolveParams) (interface{}, err
 		return nil, err
 	}
 	if deletedAt.Valid {
-		card.DeletedAt = deletedAt.Time
+		card.DeletedAt = &deletedAt.Time
 	}
 	logger.Debug("schema.resolve.card.fetched", l.NewValue("card", card))
-	return card, err
+	return &card, err
 }
 
-func newCardByResolver(tree yggdrasil.Tree) graphql.FieldResolveFn {
-	return func(params graphql.ResolveParams) (interface{}, error) {
-		return resolveCardBy(tree, params)
-	}
-}
-
-func resolveCardBy(tree yggdrasil.Tree, p graphql.ResolveParams) (interface{}, error) {
+func resolveCardBy(tree yggdrasil.Tree, filter CardFilter) ([]Card, error) {
 	var (
 		db     = sql.MustReference(tree)
 		logger = l.MustReference(tree)
 		s      = `select id, name, number_cost, id_external, id_asset,
 					id_rarity, id_set, created_at, deleted_at
 			 from card where `
-		q          string
-		a          []interface{}
-		w          []string
-		fieldAlias = map[string]func(string, int) string{
-			"set": func(key string, index int) string {
-				return fmt.Sprintf("id_set = $%d", index)
-			},
-			"name": func(key string, index int) string {
-				return fmt.Sprintf("name ~* $%d", index)
-			},
-			"types": func(key string, index int) string {
-				return fmt.Sprintf("exists (select * from unnest(types) as type where type ~* $%d)", index)
-			},
-			"numberCost": func(key string, index int) string {
-				return fmt.Sprintf("number_cost = $%d", index)
-			},
-			"costs": func(key string, index int) string {
-				return fmt.Sprintf("array_to_string(costs, '') ~* $%d", index)
-			},
-		}
+		q string
+		a []interface{}
+		w []string
+		// fieldAlias = map[string]func(string, int) string{
+		// 	"set": func(key string, index int) string {
+		// 		return fmt.Sprintf("id_set = $%d", index)
+		// 	},
+		// 	"name": func(key string, index int) string {
+		// 		return fmt.Sprintf("name ~* $%d", index)
+		// 	},
+		// 	"types": func(key string, index int) string {
+		// 		return fmt.Sprintf("exists (select * from unnest(types) as type where type ~* $%d)", index)
+		// 	},
+		// 	"numberCost": func(key string, index int) string {
+		// 		return fmt.Sprintf("number_cost = $%d", index)
+		// 	},
+		// 	"costs": func(key string, index int) string {
+		// 		return fmt.Sprintf("array_to_string(costs, '') ~* $%d", index)
+		// 	},
+		// }
 	)
-	for k, v := range p.Args {
-		if alias, ok := fieldAlias[k]; ok {
-			w = append(w, alias(k, len(w)+1))
-			a = append(a, v)
+	/*
+		for k, v := range p.Args {
+			if alias, ok := fieldAlias[k]; ok {
+				w = append(w, alias(k, len(w)+1))
+				a = append(a, v)
+			}
 		}
-	}
+	*/
 	q = s + strings.Join(w, " and ")
 
 	logger.Info("schema.resolve.cardby.sql", l.NewValue("query", q), l.NewValue("arguments", a))
@@ -253,7 +221,7 @@ func resolveCardBy(tree yggdrasil.Tree, p graphql.ResolveParams) (interface{}, e
 			return nil, err
 		}
 		if deletedAt.Valid {
-			card.DeletedAt = deletedAt.Time
+			card.DeletedAt = &deletedAt.Time
 		}
 		cards = append(cards, card)
 	}
@@ -261,6 +229,7 @@ func resolveCardBy(tree yggdrasil.Tree, p graphql.ResolveParams) (interface{}, e
 	return cards, err
 }
 
+/*
 func cardResolveRarity(p graphql.ResolveParams) (interface{}, error) {
 	card, isCard := p.Source.(Card)
 	if !isCard {
@@ -440,3 +409,4 @@ func cardResolveRules(p graphql.ResolveParams) (interface{}, error) {
 	c.Info().Err(err).Interface("rules", rules).Msg("api.query.rules.result")
 	return rules, err
 }
+*/

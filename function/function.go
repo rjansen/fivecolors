@@ -4,7 +4,9 @@ import (
 	"net/http"
 	"sync"
 
+	"github.com/99designs/gqlgen/handler"
 	"github.com/rjansen/fivecolors/core/api"
+	"github.com/rjansen/fivecolors/core/model"
 	"github.com/rjansen/l"
 	"github.com/rjansen/migi"
 	"github.com/rjansen/yggdrasil"
@@ -39,7 +41,14 @@ func newTree() yggdrasil.Tree {
 func Handler(w http.ResponseWriter, r *http.Request) {
 	once.Do(
 		func() {
-			serverHandler = api.NewGraphQLHandler(newTree())
+			// serverHandler = api.NewGraphQLHandler(newTree())
+			serverHandler = handler.GraphQL(
+				model.NewExecutableSchema(
+					model.Config{
+						Resolvers: model.NewResolver(),
+					},
+				),
+			)
 		},
 	)
 	serverHandler(w, r)
