@@ -7,6 +7,8 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/rjansen/fivecolors/core/graphql"
+	"github.com/rjansen/fivecolors/core/graphql/mockschema"
 	"github.com/rjansen/l"
 	"github.com/rjansen/raizel"
 	raizelmock "github.com/rjansen/raizel/mock"
@@ -33,10 +35,11 @@ func (scenario *testGraphQL) setup(t *testing.T) {
 		repository    = raizelmock.NewMockRepository()
 		errLogger     = l.Register(&roots, l.NewZapLoggerDefault())
 		errRepository = raizel.Register(&roots, repository)
-		errSchema     = Register(&roots, mustGetSchema(NewMockSchema()))
+		errSchema     = graphql.Register(&roots, mockschema.New())
 	)
 	require.Nil(t, errLogger, "setup logger error")
 	require.Nil(t, errRepository, "setup repository error")
+	require.Nil(t, errSchema, "setup schema error")
 	require.Nil(t, errSchema, "setup schema error")
 
 	r := httptest.NewRequest(
@@ -146,7 +149,7 @@ func TestGraphQL(test *testing.T) {
 			name:           "When a POST request body is graphql executes the query and returns ok with query results",
 			method:         http.MethodPost,
 			path:           "/query",
-			body:           "{mockEntity{tid,entity{id,string,float,integer,date_time}}}",
+			body:           "{mockEntity{tid,entity{id,string,float,integer,dateTime}}}",
 			contentType:    "application/graphql",
 			responseStatus: http.StatusOK,
 		},

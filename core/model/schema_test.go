@@ -6,6 +6,7 @@ import (
 	"testing"
 
 	"github.com/99designs/gqlgen/graphql"
+	mygraphql "github.com/rjansen/fivecolors/core/graphql"
 	"github.com/rjansen/l"
 	"github.com/rjansen/yggdrasil"
 	"github.com/stretchr/testify/require"
@@ -17,12 +18,18 @@ type testSchema struct {
 	tree   yggdrasil.Tree
 	dbMock sqlmock.Sqlmock
 	data   interface{}
-	params Params
+	schema graphql.ExecutableSchema
+	params mygraphql.Params
 	result *graphql.Response
 }
 
 func (scenario *testSchema) setup(t *testing.T) {
 	var (
+		schema = NewExecutableSchema(
+			Config{
+				Resolvers: NewResolver(),
+			},
+		)
 		roots = yggdrasil.NewRoots()
 		// db, dbMock, errSqlMock = sqlmock.New()
 		// errDB                  = sql.Register(&roots, db)
@@ -47,6 +54,7 @@ func (scenario *testSchema) setup(t *testing.T) {
 	// // mock.ExpectQuery(scenario.query).WillReturnError(scenario.err)
 	// mock.ExpectClose()
 
+	scenario.schema = schema
 	scenario.tree = tree
 	// scenario.dbMock = dbMock
 }
@@ -60,7 +68,7 @@ func TestSchema(test *testing.T) {
 			data: &struct {
 				Card Card `json:"card"`
 			}{},
-			params: Params{
+			params: mygraphql.Params{
 				Query: `{
 					card(id: "mock_cardid") {
 					  id
@@ -92,7 +100,7 @@ func TestSchema(test *testing.T) {
 			data: &struct {
 				Set Set `json:"set"`
 			}{},
-			params: Params{
+			params: mygraphql.Params{
 				Query: `{
 					set(id: "mock_setid") {
 					  id
@@ -124,7 +132,7 @@ func TestSchema(test *testing.T) {
 			data: &struct {
 				Card []Card `json:"card"`
 			}{},
-			params: Params{
+			params: mygraphql.Params{
 				Query: `{
 					cardBy(filter: {
 					  id: "mock_cardid"
@@ -170,7 +178,7 @@ func TestSchema(test *testing.T) {
 			data: &struct {
 				Set []Set `json:"set"`
 			}{},
-			params: Params{
+			params: mygraphql.Params{
 				Query: `{
 					setBy(filter: {
 					  id: "mock_setid"
@@ -210,7 +218,7 @@ func TestSchema(test *testing.T) {
 				scenario.setup(t)
 				defer scenario.tearDown(t)
 
-				response := Execute(scenario.tree, scenario.params)
+				response := mygraphql.Execute(scenario.tree, scenario.schema, scenario.params)
 				require.NotNil(t, response, "schema response invalid")
 				require.Nil(t, response.Errors, "schema response errors")
 				t.Logf("json data=%q", response.Data)

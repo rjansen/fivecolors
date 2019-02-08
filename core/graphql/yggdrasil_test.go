@@ -1,25 +1,19 @@
-package api
+package graphql
 
 import (
 	"fmt"
 	"testing"
 
-	"github.com/graphql-go/graphql"
+	"github.com/99designs/gqlgen/graphql"
+	"github.com/rjansen/fivecolors/core/graphql/mockschema"
 	"github.com/rjansen/yggdrasil"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
-func mustGetSchema(schema graphql.Schema, err error) graphql.Schema {
-	if err != nil {
-		panic(err)
-	}
-	return schema
-}
-
 type testRegister struct {
 	name   string
-	schema graphql.Schema
+	schema graphql.ExecutableSchema
 	err    error
 }
 
@@ -27,7 +21,7 @@ func TestRegister(test *testing.T) {
 	scenarios := []testRegister{
 		{
 			name:   "Register the Repository reference",
-			schema: mustGetSchema(NewMockSchema()),
+			schema: mockschema.New(),
 		},
 	}
 
@@ -70,7 +64,7 @@ func TestReference(test *testing.T) {
 		{
 			name: "Access the Repository Reference",
 			references: map[yggdrasil.Path]yggdrasil.Reference{
-				schemaPath: yggdrasil.NewReference(mustGetSchema(NewMockSchema())),
+				schemaPath: yggdrasil.NewReference(mockschema.New()),
 			},
 		},
 		{

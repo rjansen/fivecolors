@@ -1,0 +1,29 @@
+# .gqlgen.yml example
+#
+# Refer to https://gqlgen.com/config/
+# for detailed .gqlgen.yml documentation.
+
+schema:
+- core/graphql/mockschema/schema.graphql
+
+exec:
+  filename: core/graphql/mockschema/generated.go
+  type: generated
+  package: mockschema
+
+resolver:
+  filename: core/graphql/mockschema/resolvers.go
+  type: Resolver
+  package: mockschema
+
+model:
+  filename: core/graphql/mockschema/types.go
+  type: Model
+  package: mockschema
+
+models:
+  Object:
+    model: github.com/rjansen/fivecolors/core/graphql/mockschema.Object
+  DateTime:
+    model: github.com/rjansen/fivecolors/core/graphql/mockschema.DateTime
+
