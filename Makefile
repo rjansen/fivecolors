@@ -76,4 +76,4 @@ docker.%:
 	docker run --rm --name $(NAME)-run -u $(shell id -u):$(shell id -g) \
     		    -v $(BASE_DIR):/go/src/$(ROOT_REPO) $(DOCKER_NAME) $*
 
-include .make/*[!\.vars].makefile
+include .make/*.makefile
