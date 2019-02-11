@@ -1,7 +1,11 @@
 .PHONY: postgres.setup
 postgres.setup:
-	which migrate || \
-		GO111MODULE=off go get -tags 'postgres' -u github.com/golang-migrate/migrate/cmd/migrate
+	which migrate || (\
+		cd $(TMP_DIR) && \
+		curl -O -L https://github.com/golang-migrate/migrate/releases/download/v4.2.3/migrate.linux-amd64.tar.gz && \
+		tar xf migrate.linux-amd64.tar.gz && \
+		mv -f migrate.linux-amd64 /usr/local/bin/migrate \
+	)
 	migrate -help > /dev/null 2>&1
 
 .PHONY: postgres.run
