@@ -8,7 +8,7 @@ install: sudo make setup postgres.setup clean
 
 before_script:
     - sudo /etc/init.d/postgresql stop
-    - make postgres.run postgres.migrations.run
+    - make postgres.migrations.run
 
 script: make ci
 
