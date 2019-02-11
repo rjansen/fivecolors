@@ -4,15 +4,15 @@ sudo: true
 go:
     - 1.11.x
 
-install: sudo make setup clean
+install: sudo make setup postgres.setup clean
 
-# before_script:
-#     - sudo /etc/init.d/postgresql stop
-#     - make postgres.run firestore.decodekeycontent
+before_script:
+    - sudo /etc/init.d/postgresql stop
+    - make postgres.run postgres.migrations.run
 
 script: make ci
 
-# after_script: make postgres.kill
+after_script: make postgres.kill
 
 after_success: make coverage.push
 
@@ -21,5 +21,5 @@ notifications:
         on_success: change
         on_failure: always
 
-# services:
-#     - docker
+services:
+    - docker

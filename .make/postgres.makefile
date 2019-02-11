@@ -1,5 +1,5 @@
-.PHONY: postgres.deps
-postgres.deps:
+.PHONY: postgres.setup
+postgres.setup:
 	which migrate || \
 		GO111MODULE=off go get -tags 'postgres' -u github.com/golang-migrate/migrate/cmd/migrate
 	migrate -help > /dev/null 2>&1
