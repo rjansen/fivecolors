@@ -1,0 +1,33 @@
+module github.com/rjansen/fivecolors
+
+require (
+	github.com/99designs/gqlgen v0.7.1
+	github.com/agnivade/levenshtein v1.0.1
+	github.com/davecgh/go-spew v1.1.1
+	github.com/google/uuid v1.1.0
+	github.com/gorilla/websocket v1.4.0
+	github.com/graphql-go/graphql v0.7.7
+	github.com/hashicorp/golang-lru v0.5.0
+	github.com/hashicorp/hcl v1.0.0
+	github.com/huandu/go-sqlbuilder v1.1.0
+	github.com/julienschmidt/httprouter v1.2.0
+	github.com/lib/pq v1.0.0
+	github.com/paked/configure v0.0.0-20170626170506-5203c690d95a
+	github.com/pkg/errors v0.8.1
+	github.com/pmezard/go-difflib v1.0.0
+	github.com/rjansen/l v0.0.0-20190127231537-1cd311bd3239
+	github.com/rjansen/migi v0.0.0-20190113201353-309b13ecc08f
+	github.com/rjansen/raizel v0.0.0-20190128043717-4b14151acd4d
+	github.com/rjansen/yggdrasil v0.0.0-20190113202223-f5e7a218aac6
+	github.com/rs/zerolog v1.11.0
+	github.com/stretchr/objx v0.1.1
+	github.com/stretchr/testify v1.3.0
+	github.com/urfave/cli v1.20.0
+	github.com/vektah/gqlparser v1.1.0
+	go.uber.org/atomic v1.3.2
+	go.uber.org/multierr v1.1.0
+	go.uber.org/zap v1.9.1
+	golang.org/x/tools v0.0.0-20190202235157-7414d4c1f71c
+	gopkg.in/DATA-DOG/go-sqlmock.v1 v1.3.0
+	gopkg.in/yaml.v2 v2.2.2
+)

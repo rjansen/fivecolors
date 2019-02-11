@@ -93,15 +93,15 @@ func (r *queryResolver) CardBy(ctx context.Context, filter CardFilter) ([]Card, 
 		w []string
 	)
 	if filter.Name != nil {
-		w = append(w, fmt.Sprintf("name ~* $%d", len(w)+1))
+		w = append(w, fmt.Sprintf("name ~* $%d", len(a)+1))
 		a = append(a, *filter.Name)
 	}
 	if filter.Types != nil {
-		w = append(w, fmt.Sprintf("exists (select 1 from unnest(types) as type where type ~* $%d)", len(w)+1))
+		w = append(w, fmt.Sprintf("exists (select 1 from unnest(types) as type where type ~* $%d)", len(a)+1))
 		a = append(a, *filter.Types)
 	}
 	if filter.Costs != nil {
-		w = append(w, fmt.Sprintf("array_to_string(costs, '') ~* $%d", len(w)+1))
+		w = append(w, fmt.Sprintf("array_to_string(costs, '') ~* $%d", len(a)+1))
 		a = append(a, *filter.Costs)
 	}
 	if filter.Set != nil {
@@ -111,11 +111,11 @@ func (r *queryResolver) CardBy(ctx context.Context, filter CardFilter) ([]Card, 
 			seta []interface{}
 		)
 		if filter.Set.Name != nil {
-			setw = append(setw, fmt.Sprintf("name ~* $%d", len(w)+1))
+			setw = append(setw, fmt.Sprintf("name ~* $%d", len(a)+len(seta)+1))
 			seta = append(seta, *filter.Set.Name)
 		}
 		if filter.Set.Alias != nil {
-			setw = append(setw, fmt.Sprintf("alias ~* $%d", len(w)+1))
+			setw = append(setw, fmt.Sprintf("alias ~* $%d", len(a)+len(seta)+1))
 			seta = append(seta, *filter.Set.Alias)
 		}
 		w = append(w, fmt.Sprintf(setq, strings.Join(setw, " and ")))
@@ -128,11 +128,11 @@ func (r *queryResolver) CardBy(ctx context.Context, filter CardFilter) ([]Card, 
 			raritya []interface{}
 		)
 		if filter.Rarity.Name != nil {
-			rarityw = append(rarityw, fmt.Sprintf("name ~* $%d", len(w)+1))
+			rarityw = append(rarityw, fmt.Sprintf("name ~* $%d", len(a)+len(raritya)+1))
 			raritya = append(raritya, *filter.Rarity.Name)
 		}
 		if filter.Rarity.Alias != nil {
-			rarityw = append(rarityw, fmt.Sprintf("alias ~* $%d", len(w)+1))
+			rarityw = append(rarityw, fmt.Sprintf("alias ~* $%d", len(a)+len(raritya)+1))
 			raritya = append(raritya, *filter.Rarity.Alias)
 		}
 		w = append(w, fmt.Sprintf(rarityq, strings.Join(rarityw, " and ")))
@@ -230,11 +230,11 @@ func (r *queryResolver) SetBy(ctx context.Context, filter SetFilter) ([]Set, err
 		w []string
 	)
 	if filter.Name != nil {
-		w = append(w, fmt.Sprintf("name ~* $%d", len(w)+1))
+		w = append(w, fmt.Sprintf("name ~* $%d", len(a)+1))
 		a = append(a, *filter.Name)
 	}
 	if filter.Alias != nil {
-		w = append(w, fmt.Sprintf("alias ~* $%d", len(w)+1))
+		w = append(w, fmt.Sprintf("alias ~* $%d", len(a)+1))
 		a = append(a, *filter.Alias)
 	}
 	q = s + strings.Join(w, " and ")
