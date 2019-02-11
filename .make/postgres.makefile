@@ -16,9 +16,9 @@ postgres.kill:
 	@echo "$(REPO) postgres.kill"
 	docker kill postgres-run
 
-.PHONY: postgres.setup
-postgres.setup:
-	@echo "$(REPO) postgres.setup"
+.PHONY: postgres.scripts
+postgres.scripts:
+	@echo "$(REPO) postgres.scripts"
 	sleep 5
 	cat $(POSTGRES_SCRIPTS_DIR)/* | \
 		psql -h $(POSTGRES_HOST) -U $(POSTGRES_USER) -d $(POSTGRES_DATABASE) -1 -f -
