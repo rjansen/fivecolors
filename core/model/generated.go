@@ -1644,10 +1644,10 @@ func (ec *executionContext) _Rarity_name(ctx context.Context, field graphql.Coll
 		}
 		return graphql.Null
 	}
-	res := resTmp.(string)
+	res := resTmp.(RarityName)
 	rctx.Result = res
 	ctx = ec.Tracer.StartFieldChildExecution(ctx)
-	return graphql.MarshalString(res)
+	return res
 }
 
 // nolint: vetshadow
@@ -1671,10 +1671,10 @@ func (ec *executionContext) _Rarity_alias(ctx context.Context, field graphql.Col
 		}
 		return graphql.Null
 	}
-	res := resTmp.(string)
+	res := resTmp.(RarityAlias)
 	rctx.Result = res
 	ctx = ec.Tracer.StartFieldChildExecution(ctx)
-	return graphql.MarshalString(res)
+	return res
 }
 
 var setImplementors = []string{"Set"}
@@ -3440,59 +3440,67 @@ func UnmarshalCardFilter(v interface{}) (CardFilter, error) {
 		switch k {
 		case "id":
 			var err error
-			it.ID, err = graphql.UnmarshalID(v)
+			var ptr1 string
+			if v != nil {
+				ptr1, err = graphql.UnmarshalID(v)
+				it.ID = &ptr1
+			}
+
 			if err != nil {
 				return it, err
 			}
 		case "name":
 			var err error
-			it.Name, err = graphql.UnmarshalString(v)
+			var ptr1 string
+			if v != nil {
+				ptr1, err = graphql.UnmarshalString(v)
+				it.Name = &ptr1
+			}
+
 			if err != nil {
 				return it, err
 			}
 		case "types":
 			var err error
-			var rawIf1 []interface{}
+			var ptr1 string
 			if v != nil {
-				if tmp1, ok := v.([]interface{}); ok {
-					rawIf1 = tmp1
-				} else {
-					rawIf1 = []interface{}{v}
-				}
+				ptr1, err = graphql.UnmarshalString(v)
+				it.Types = &ptr1
 			}
-			it.Types = make([]string, len(rawIf1))
-			for idx1 := range rawIf1 {
-				it.Types[idx1], err = graphql.UnmarshalString(rawIf1[idx1])
-			}
+
 			if err != nil {
 				return it, err
 			}
 		case "costs":
 			var err error
-			var rawIf1 []interface{}
+			var ptr1 string
 			if v != nil {
-				if tmp1, ok := v.([]interface{}); ok {
-					rawIf1 = tmp1
-				} else {
-					rawIf1 = []interface{}{v}
-				}
+				ptr1, err = graphql.UnmarshalString(v)
+				it.Costs = &ptr1
 			}
-			it.Costs = make([]string, len(rawIf1))
-			for idx1 := range rawIf1 {
-				it.Costs[idx1], err = graphql.UnmarshalString(rawIf1[idx1])
-			}
+
 			if err != nil {
 				return it, err
 			}
 		case "set":
 			var err error
-			it.Set, err = UnmarshalSetFilter(v)
+			var ptr1 SetFilter
+			if v != nil {
+				ptr1, err = UnmarshalSetFilter(v)
+				it.Set = &ptr1
+			}
+
 			if err != nil {
 				return it, err
 			}
 		case "rarity":
 			var err error
-			it.Rarity, err = UnmarshalRarityFilter(v)
+			var ptr1 RarityFilter
+			if v != nil {
+				ptr1, err = UnmarshalRarityFilter(v)
+				it.Rarity = &ptr1
+			}
+
 			if err != nil {
 				return it, err
 			}
@@ -3510,13 +3518,34 @@ func UnmarshalRarityFilter(v interface{}) (RarityFilter, error) {
 		switch k {
 		case "id":
 			var err error
-			err = (&it.ID).UnmarshalGQL(v)
+			var ptr1 string
+			if v != nil {
+				ptr1, err = graphql.UnmarshalID(v)
+				it.ID = &ptr1
+			}
+
+			if err != nil {
+				return it, err
+			}
+		case "name":
+			var err error
+			var ptr1 RarityName
+			if v != nil {
+				err = (&ptr1).UnmarshalGQL(v)
+				it.Name = &ptr1
+			}
+
 			if err != nil {
 				return it, err
 			}
 		case "alias":
 			var err error
-			err = (&it.Alias).UnmarshalGQL(v)
+			var ptr1 RarityAlias
+			if v != nil {
+				err = (&ptr1).UnmarshalGQL(v)
+				it.Alias = &ptr1
+			}
+
 			if err != nil {
 				return it, err
 			}
@@ -3534,19 +3563,34 @@ func UnmarshalSetFilter(v interface{}) (SetFilter, error) {
 		switch k {
 		case "id":
 			var err error
-			it.ID, err = graphql.UnmarshalID(v)
+			var ptr1 string
+			if v != nil {
+				ptr1, err = graphql.UnmarshalID(v)
+				it.ID = &ptr1
+			}
+
 			if err != nil {
 				return it, err
 			}
 		case "name":
 			var err error
-			it.Name, err = graphql.UnmarshalString(v)
+			var ptr1 string
+			if v != nil {
+				ptr1, err = graphql.UnmarshalString(v)
+				it.Name = &ptr1
+			}
+
 			if err != nil {
 				return it, err
 			}
 		case "alias":
 			var err error
-			it.Alias, err = graphql.UnmarshalString(v)
+			var ptr1 string
+			if v != nil {
+				ptr1, err = graphql.UnmarshalString(v)
+				it.Alias = &ptr1
+			}
+
 			if err != nil {
 				return it, err
 			}
@@ -3589,7 +3633,7 @@ var parsedSchema = gqlparser.MustLoadSchema(
 	&ast.Source{Name: "core/model/schema.graphql", Input: `scalar DateTime
 scalar Object
 
-enum RarityId {
+enum RarityName {
   Common
   Uncommon
   Rare
@@ -3613,8 +3657,8 @@ enum RarityAlias {
 
 type Rarity {
   id: ID!
-  name: String!
-  alias: String!
+  name: RarityName!
+  alias: RarityAlias!
 }
 
 type Set {
@@ -3653,23 +3697,24 @@ type Card {
 }
 
 input RarityFilter {
-  id: RarityId!
-  alias: RarityAlias!
+  id: ID
+  name: RarityName
+  alias: RarityAlias
 }
 
 input SetFilter {
-  id: ID!
-  name: String!
-  alias: String!
+  id: ID
+  name: String
+  alias: String
 }
 
 input CardFilter {
-  id: ID!
-  name: String!
-  types: [String!]!
-  costs: [String!]!
-  set: SetFilter!
-  rarity: RarityFilter!
+  id: ID
+  name: String
+  types: String
+  costs: String
+  set: SetFilter
+  rarity: RarityFilter
 }
 
 type Query {

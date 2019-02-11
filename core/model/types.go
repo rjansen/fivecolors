@@ -34,23 +34,24 @@ type Card struct {
 }
 
 type CardFilter struct {
-	ID     string       `json:"id"`
-	Name   string       `json:"name"`
-	Types  []string     `json:"types"`
-	Costs  []string     `json:"costs"`
-	Set    SetFilter    `json:"set"`
-	Rarity RarityFilter `json:"rarity"`
+	ID     *string       `json:"id"`
+	Name   *string       `json:"name"`
+	Types  *string       `json:"types"`
+	Costs  *string       `json:"costs"`
+	Set    *SetFilter    `json:"set"`
+	Rarity *RarityFilter `json:"rarity"`
 }
 
 type Rarity struct {
-	ID    string `json:"id"`
-	Name  string `json:"name"`
-	Alias string `json:"alias"`
+	ID    string      `json:"id"`
+	Name  RarityName  `json:"name"`
+	Alias RarityAlias `json:"alias"`
 }
 
 type RarityFilter struct {
-	ID    RarityId    `json:"id"`
-	Alias RarityAlias `json:"alias"`
+	ID    *string      `json:"id"`
+	Name  *RarityName  `json:"name"`
+	Alias *RarityAlias `json:"alias"`
 }
 
 type Set struct {
@@ -65,9 +66,9 @@ type Set struct {
 }
 
 type SetFilter struct {
-	ID    string `json:"id"`
-	Name  string `json:"name"`
-	Alias string `json:"alias"`
+	ID    *string `json:"id"`
+	Name  *string `json:"name"`
+	Alias *string `json:"alias"`
 }
 
 type RarityAlias string
@@ -112,44 +113,44 @@ func (e RarityAlias) MarshalGQL(w io.Writer) {
 	fmt.Fprint(w, strconv.Quote(e.String()))
 }
 
-type RarityId string
+type RarityName string
 
 const (
-	RarityIdCommon     RarityId = "Common"
-	RarityIdUncommon   RarityId = "Uncommon"
-	RarityIdRare       RarityId = "Rare"
-	RarityIdMythicRare RarityId = "MythicRare"
-	RarityIdSpecial    RarityId = "Special"
-	RarityIdLand       RarityId = "Land"
-	RarityIdPromo      RarityId = "Promo"
-	RarityIdBonus      RarityId = "Bonus"
+	RarityNameCommon     RarityName = "Common"
+	RarityNameUncommon   RarityName = "Uncommon"
+	RarityNameRare       RarityName = "Rare"
+	RarityNameMythicRare RarityName = "MythicRare"
+	RarityNameSpecial    RarityName = "Special"
+	RarityNameLand       RarityName = "Land"
+	RarityNamePromo      RarityName = "Promo"
+	RarityNameBonus      RarityName = "Bonus"
 )
 
-func (e RarityId) IsValid() bool {
+func (e RarityName) IsValid() bool {
 	switch e {
-	case RarityIdCommon, RarityIdUncommon, RarityIdRare, RarityIdMythicRare, RarityIdSpecial, RarityIdLand, RarityIdPromo, RarityIdBonus:
+	case RarityNameCommon, RarityNameUncommon, RarityNameRare, RarityNameMythicRare, RarityNameSpecial, RarityNameLand, RarityNamePromo, RarityNameBonus:
 		return true
 	}
 	return false
 }
 
-func (e RarityId) String() string {
+func (e RarityName) String() string {
 	return string(e)
 }
 
-func (e *RarityId) UnmarshalGQL(v interface{}) error {
+func (e *RarityName) UnmarshalGQL(v interface{}) error {
 	str, ok := v.(string)
 	if !ok {
 		return fmt.Errorf("enums must be strings")
 	}
 
-	*e = RarityId(str)
+	*e = RarityName(str)
 	if !e.IsValid() {
-		return fmt.Errorf("%s is not a valid RarityId", str)
+		return fmt.Errorf("%s is not a valid RarityName", str)
 	}
 	return nil
 }
 
-func (e RarityId) MarshalGQL(w io.Writer) {
+func (e RarityName) MarshalGQL(w io.Writer) {
 	fmt.Fprint(w, strconv.Quote(e.String()))
 }

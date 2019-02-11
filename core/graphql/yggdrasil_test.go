@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"testing"
 
-	"github.com/99designs/gqlgen/graphql"
 	"github.com/rjansen/fivecolors/core/graphql/mockschema"
 	"github.com/rjansen/yggdrasil"
 	"github.com/stretchr/testify/assert"
@@ -13,7 +12,7 @@ import (
 
 type testRegister struct {
 	name   string
-	schema graphql.ExecutableSchema
+	schema Schema
 	err    error
 }
 
@@ -21,7 +20,7 @@ func TestRegister(test *testing.T) {
 	scenarios := []testRegister{
 		{
 			name:   "Register the Repository reference",
-			schema: mockschema.New(),
+			schema: NewSchema(mockschema.New()),
 		},
 	}
 
@@ -64,7 +63,7 @@ func TestReference(test *testing.T) {
 		{
 			name: "Access the Repository Reference",
 			references: map[yggdrasil.Path]yggdrasil.Reference{
-				schemaPath: yggdrasil.NewReference(mockschema.New()),
+				schemaPath: yggdrasil.NewReference(NewSchema(mockschema.New())),
 			},
 		},
 		{

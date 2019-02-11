@@ -1,65 +1,71 @@
 package model
 
 import (
+	"database/sql/driver"
 	"encoding/json"
 	"fmt"
 	"testing"
+	"time"
 
-	"github.com/99designs/gqlgen/graphql"
-	mygraphql "github.com/rjansen/fivecolors/core/graphql"
+	"github.com/rjansen/fivecolors/core/graphql"
 	"github.com/rjansen/l"
+	"github.com/rjansen/raizel/sql"
 	"github.com/rjansen/yggdrasil"
 	"github.com/stretchr/testify/require"
 	sqlmock "gopkg.in/DATA-DOG/go-sqlmock.v1"
 )
 
 type testSchema struct {
-	name   string
-	tree   yggdrasil.Tree
-	dbMock sqlmock.Sqlmock
-	data   interface{}
-	schema graphql.ExecutableSchema
-	params mygraphql.Params
-	result *graphql.Response
+	name     string
+	tree     yggdrasil.Tree
+	dbMock   sqlmock.Sqlmock
+	data     interface{}
+	columns  []string
+	rows     [][]interface{}
+	schema   graphql.Schema
+	request  graphql.Request
+	response *graphql.Response
 }
 
 func (scenario *testSchema) setup(t *testing.T) {
 	var (
-		schema = NewExecutableSchema(
-			Config{
-				Resolvers: NewResolver(),
-			},
-		)
-		roots = yggdrasil.NewRoots()
-		// db, dbMock, errSqlMock = sqlmock.New()
-		// errDB                  = sql.Register(&roots, db)
-		errLogger = l.Register(&roots, l.NewZapLoggerDefault())
+		roots                   = yggdrasil.NewRoots()
+		errLogger               = l.Register(&roots, l.NewZapLoggerDefault())
+		sqlDB, dbMock, errSqlDB = sqlmock.New()
+		db, errDB               = sql.NewDB(sqlDB)
+		errRegisterDB           = sql.Register(&roots, db)
 	)
 	require.Nil(t, errLogger, "setup logger error")
-	// require.Nil(t, errDB, "setup db error")
+	require.Nil(t, errSqlDB, "new sqldb error")
+	require.Nil(t, errDB, "new db error")
+	require.Nil(t, errRegisterDB, "setup db error")
 
 	tree := roots.NewTreeDefault()
-	// schema, err := NewSchema(tree)
-	// require.Nil(t, err, "setup schema error")
+	schema := NewSchema(tree)
+	require.NotNil(t, schema, "new schema error")
 
-	// mockRows := sqlmock.NewRows(scenario.columns)
-	// for _, row := range scenario.rows {
-	// 	columns := make([]driver.Value, len(row))
-	// 	for index, column := range row {
-	// 		columns[index] = column
-	// 	}
-	// 	mockRows.AddRow(columns...)
-	// }
-	// mock.ExpectQuery(scenario.query).WillReturnRows(mockRows)
-	// // mock.ExpectQuery(scenario.query).WillReturnError(scenario.err)
-	// mock.ExpectClose()
+	mockRows := sqlmock.NewRows(scenario.columns)
+	for _, row := range scenario.rows {
+		columns := make([]driver.Value, len(row))
+		for index, column := range row {
+			columns[index] = column
+		}
+		mockRows.AddRow(columns...)
+	}
+	dbMock.ExpectQuery("select").WillReturnRows(mockRows)
+	// mock.ExpectQuery(scenario.query).WillReturnError(scenario.err)
+	// dbMock.ExpectClose()
 
 	scenario.schema = schema
+	scenario.dbMock = dbMock
 	scenario.tree = tree
-	// scenario.dbMock = dbMock
 }
 
-func (scenario *testSchema) tearDown(*testing.T) {}
+func (scenario *testSchema) tearDown(*testing.T) {
+	if scenario.tree != nil {
+		scenario.tree.Close()
+	}
+}
 
 func TestSchema(test *testing.T) {
 	scenarios := []testSchema{
@@ -68,7 +74,20 @@ func TestSchema(test *testing.T) {
 			data: &struct {
 				Card Card `json:"card"`
 			}{},
-			params: mygraphql.Params{
+			columns: []string{
+				"id", "name", "number_cost", "id_external", "id_rarity", "id_set", "id_asset",
+				"rate", "rate_votes", "order_external", "artist", "flavor", "data",
+				"created_at", "updated_at", "deleted_at",
+			},
+			rows: [][]interface{}{
+				{
+
+					"mock_id", "mock_name", 2.0, "mock_id_external", "mock_id_rarity", "mock_id_set",
+					"mock_id_asset", 0.0, 0, "1022A", "Mock Artist", "Mock Flavor",
+					Object{"key1": "value1", "key2": 10}, time.Now().UTC(), time.Now().UTC(), time.Now().UTC(),
+				},
+			},
+			request: graphql.Request{
 				Query: `{
 					card(id: "mock_cardid") {
 					  id
@@ -81,16 +100,6 @@ func TestSchema(test *testing.T) {
 					  createdAt
 					  updatedAt
 					  deletedAt
-                      rarity {
-                        id
-                        name
-                        alias
-                      }
-                      set {
-                        id
-                        name
-                        alias
-                      }
                     }
 				}`,
 			},
@@ -100,27 +109,37 @@ func TestSchema(test *testing.T) {
 			data: &struct {
 				Set Set `json:"set"`
 			}{},
-			params: mygraphql.Params{
+			columns: []string{
+				"id", "name", "alias", "created_at", "updated_at", "deleted_at",
+			},
+			rows: [][]interface{}{
+				{
+
+					"mock_id", "mock_name", "mock_alias",
+					time.Now().UTC(), time.Now().UTC(), time.Now().UTC(),
+				},
+			},
+			request: graphql.Request{
 				Query: `{
 					set(id: "mock_setid") {
 					  id
 					  name
 					  alias
 					  cards {
-					    id
-					    name
-					    types
-					    costs
-					    numberCost
-					    idAsset
-					    data
-					    createdAt
-					    updatedAt
-					    deletedAt
-					    rarity {
-					      id
-					      name
-					      alias
+						id
+						name
+						types
+						costs
+						numberCost
+						idAsset
+						data
+						createdAt
+						updatedAt
+						deletedAt
+						rarity {
+						  id
+						  name
+						  alias
 						}
 					  }
 					}
@@ -132,20 +151,49 @@ func TestSchema(test *testing.T) {
 			data: &struct {
 				Card []Card `json:"card"`
 			}{},
-			params: mygraphql.Params{
+			columns: []string{
+				"id", "name", "number_cost", "id_external", "id_rarity", "id_set", "id_asset",
+				"rate", "rate_votes", "order_external", "artist", "flavor", "data",
+				"created_at", "updated_at", "deleted_at",
+			},
+			rows: [][]interface{}{
+				{
+
+					"mock_id", "mock_name", 2.0, "mock_id_external", "mock_id_rarity", "mock_id_set",
+					"mock_id_asset", 0.0, 0, "1022A", "Mock Artist", "Mock Flavor",
+					Object{"key1": "value1", "key2": 10}, time.Now().UTC(), time.Now().UTC(), time.Now().UTC(),
+				},
+				{
+
+					"mock_id", "mock_name", 2.0, "mock_id_external", "mock_id_rarity", "mock_id_set",
+					"mock_id_asset", 0.0, 0, "1022A", "Mock Artist", "Mock Flavor",
+					Object{"key1": "value1", "key2": 10}, time.Now().UTC(), time.Now().UTC(), time.Now().UTC(),
+				},
+				{
+
+					"mock_id", "mock_name", 2.0, "mock_id_external", "mock_id_rarity", "mock_id_set",
+					"mock_id_asset", 0.0, 0, "1022A", "Mock Artist", "Mock Flavor",
+					Object{"key1": "value1", "key2": 10}, time.Now().UTC(), time.Now().UTC(), time.Now().UTC(),
+				},
+				{
+
+					"mock_id", "mock_name", 2.0, "mock_id_external", "mock_id_rarity", "mock_id_set",
+					"mock_id_asset", 0.0, 0, "1022A", "Mock Artist", "Mock Flavor",
+					Object{"key1": "value1", "key2": 10}, time.Now().UTC(), time.Now().UTC(), time.Now().UTC(),
+				},
+			},
+			request: graphql.Request{
 				Query: `{
 					cardBy(filter: {
-					  id: "mock_cardid"
 					  name: "mock_cardname"
-					  types: ["mock_cardtype1", "mock_cardtype2"]
-					  costs: ["1", "B", "U", "R", "W"]
+					  types: "mock_cardtype1 - mock_cardtype2"
+					  costs: "1BURW"
 					  set: {
-						id: "mock_setid"
 						name: "mock_setname"
 						alias: "mock_setalias"
 					  }
 					  rarity: {
-						id: Rare
+						name: Rare
 						alias: R
 					  }
 					}) {
@@ -160,14 +208,14 @@ func TestSchema(test *testing.T) {
 					  updatedAt
 					  deletedAt
 					  rarity {
-					    id
-					    name
-					    alias
+						id
+						name
+						alias
 					  }
 					  set {
-					    id
-					    name
-					    alias
+						id
+						name
+						alias
 					  }
 					}
 				}`,
@@ -178,10 +226,24 @@ func TestSchema(test *testing.T) {
 			data: &struct {
 				Set []Set `json:"set"`
 			}{},
-			params: mygraphql.Params{
+			columns: []string{
+				"id", "name", "alias", "created_at", "updated_at", "deleted_at",
+			},
+			rows: [][]interface{}{
+				{
+
+					"mock_id", "mock_name", "mock_alias",
+					time.Now().UTC(), time.Now().UTC(), time.Now().UTC(),
+				},
+				{
+
+					"mock_id", "mock_name", "mock_alias",
+					time.Now().UTC(), time.Now().UTC(), time.Now().UTC(),
+				},
+			},
+			request: graphql.Request{
 				Query: `{
 					setBy(filter: {
-					  id: "mock_setid"
 					  name: "mock_setname"
 					  alias: "mock_setalias"
 					}) {
@@ -189,21 +251,21 @@ func TestSchema(test *testing.T) {
 					  name
 					  alias
 					  cards {
-					    id
-				  	    name
-					    types
-					    costs
-					    numberCost
-					    idAsset
-					    data
-					    createdAt
-					    updatedAt
-					    deletedAt
-					    rarity {
-					      id
-					      name
-					      alias
-					    }
+						id
+						name
+						types
+						costs
+						numberCost
+						idAsset
+						data
+						createdAt
+						updatedAt
+						deletedAt
+						rarity {
+						  id
+						  name
+						  alias
+						}
 					  }
 					}
 				}`,
@@ -218,13 +280,14 @@ func TestSchema(test *testing.T) {
 				scenario.setup(t)
 				defer scenario.tearDown(t)
 
-				response := mygraphql.Execute(scenario.tree, scenario.schema, scenario.params)
+				response := graphql.Execute(scenario.tree, scenario.schema, scenario.request)
 				require.NotNil(t, response, "schema response invalid")
-				require.Nil(t, response.Errors, "schema response errors")
+				require.Nilf(t, response.Errors, "schema response errors: %+v", response.Errors)
 				t.Logf("json data=%q", response.Data)
 				err := json.Unmarshal(response.Data, scenario.data)
 				require.Nil(t, err, "schema response unmarshal error")
 				require.NotZero(t, scenario.data, "data response invalid")
+				require.Nil(t, scenario.dbMock.ExpectationsWereMet(), "dbmock invalid expectations")
 			},
 		)
 	}

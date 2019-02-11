@@ -1,15 +1,8 @@
 package model
 
 import (
-	"context"
-	stdsql "database/sql"
-	"strings"
-
-	"github.com/lib/pq"
 	"github.com/rjansen/fivecolors/core/errors"
-	"github.com/rjansen/l"
-	"github.com/rjansen/raizel"
-	"github.com/rjansen/raizel/sql"
+	"github.com/rjansen/fivecolors/core/graphql"
 	"github.com/rjansen/yggdrasil"
 )
 
@@ -17,176 +10,14 @@ var (
 	ErrInvalidState = errors.New("ErrInvalidState")
 )
 
-func resolveSet(ctx context.Context, id string) (*Set, error) {
-	c, err := NewContext(ctx)
-	if err != nil {
-		return nil, err
-	}
-	var (
-		s = `select id, name, alias, created_at, deleted_at from set where `
-		q string
-		a []interface{}
+func NewSchema(tree yggdrasil.Tree) graphql.Schema {
+	return graphql.NewSchema(
+		NewExecutableSchema(
+			Config{
+				Resolvers: NewResolver(tree),
+			},
+		),
 	)
-	q = s + "id = $1"
-	a = append(a, id)
-	/*
-		var w []string
-		for k, v := range p.Args {
-			w = append(w, fmt.Sprintf("%s = $%d", k, len(w)+1))
-			a = append(a, v)
-		}
-		q = s + strings.Join(w, " and ")
-	*/
-	var set Set
-	fetchSet := func(m *Context, s Scanner) error {
-		m.Info().Msg("api.query.fetch.set")
-		var deletedAt pq.NullTime
-		err := s.Scan(&set.ID, &set.Name, &set.Alias, &set.CreatedAt, &deletedAt)
-		if err != nil {
-			m.Error().Err(err).Msg("api.query.fetch.set.err")
-			return err
-		}
-		if deletedAt.Valid {
-			set.DeletedAt = &deletedAt.Time
-		}
-		m.Info().Interface("set", set).Msg("api.query.fetched.set")
-		return nil
-	}
-	c.Info().Str("query", q).Msg("api.query.set.try")
-	err = QueryOne(c, q, fetchSet, a...)
-	if err != nil {
-		if err == ErrNotFound {
-			return nil, nil
-		}
-		c.Error().Err(err).Str("query", q).Msg("api.query.set.err")
-		return nil, err
-	}
-	c.Info().Err(err).Interface("set", set).Msg("api.query.set.result")
-	return &set, err
-}
-
-func resolveCard(tree yggdrasil.Tree, id string) (*Card, error) {
-	var (
-		db     = sql.MustReference(tree)
-		logger = l.MustReference(tree)
-		s      = `select id, name, number_cost, id_external, id_asset,
-					id_rarity, id_set, created_at, deleted_at
-			 from card where `
-		q string
-		a []interface{}
-		// fieldAlias = map[string]string{
-		// 	 "idExternal": "id_external",
-		// 	 "idAsset":    "id_asset",
-		// }
-	)
-	q = s + "id = $1"
-	a = append(a, id)
-	/*
-		var w []string
-		for k, v := range p.Args {
-			if alias, ok := fieldAlias[k]; ok {
-				w = append(w, fmt.Sprintf("%s = $%d", alias, len(w)+1))
-			} else {
-				w = append(w, fmt.Sprintf("%s = $%d", k, len(w)+1))
-			}
-			a = append(a, v)
-		}
-		q = s + strings.Join(w, " and ")
-	*/
-	logger.Debug("schema.resolve.card.sql", l.NewValue("sql", q), l.NewValue("arguments", a))
-	var (
-		card      Card
-		deletedAt pq.NullTime
-		row       = db.QueryRow(q, a...)
-		err       = row.Scan(
-			&card.ID, &card.Name, &card.NumberCost, &card.IDExternal, &card.IDAsset,
-			&card.IDRarity, &card.IDSet, &card.CreatedAt, &deletedAt,
-		)
-	)
-	if err != nil {
-		if err == stdsql.ErrNoRows {
-			return nil, raizel.ErrNotFound
-		}
-		logger.Error("schema.resolve.card.err_fetch", l.NewValue("error", err))
-		return nil, err
-	}
-	if deletedAt.Valid {
-		card.DeletedAt = &deletedAt.Time
-	}
-	logger.Debug("schema.resolve.card.fetched", l.NewValue("card", card))
-	return &card, err
-}
-
-func resolveCardBy(tree yggdrasil.Tree, filter CardFilter) ([]Card, error) {
-	var (
-		db     = sql.MustReference(tree)
-		logger = l.MustReference(tree)
-		s      = `select id, name, number_cost, id_external, id_asset,
-					id_rarity, id_set, created_at, deleted_at
-			 from card where `
-		q string
-		a []interface{}
-		w []string
-		// fieldAlias = map[string]func(string, int) string{
-		// 	"set": func(key string, index int) string {
-		// 		return fmt.Sprintf("id_set = $%d", index)
-		// 	},
-		// 	"name": func(key string, index int) string {
-		// 		return fmt.Sprintf("name ~* $%d", index)
-		// 	},
-		// 	"types": func(key string, index int) string {
-		// 		return fmt.Sprintf("exists (select * from unnest(types) as type where type ~* $%d)", index)
-		// 	},
-		// 	"numberCost": func(key string, index int) string {
-		// 		return fmt.Sprintf("number_cost = $%d", index)
-		// 	},
-		// 	"costs": func(key string, index int) string {
-		// 		return fmt.Sprintf("array_to_string(costs, '') ~* $%d", index)
-		// 	},
-		// }
-	)
-	/*
-		for k, v := range p.Args {
-			if alias, ok := fieldAlias[k]; ok {
-				w = append(w, alias(k, len(w)+1))
-				a = append(a, v)
-			}
-		}
-	*/
-	q = s + strings.Join(w, " and ")
-
-	logger.Info("schema.resolve.cardby.sql", l.NewValue("query", q), l.NewValue("arguments", a))
-	var (
-		cards     = make([]Card, 0, 200)
-		rows, err = db.Query(q, a...)
-	)
-	if err != nil {
-		if err == stdsql.ErrNoRows {
-			return cards, nil
-		}
-		logger.Error("schema.resolve.cardby.err_execute_sql", l.NewValue("error", err))
-		return nil, err
-	}
-	for rows.Next() {
-		var (
-			card      Card
-			deletedAt pq.NullTime
-		)
-		err := rows.Scan(
-			&card.ID, &card.Name, &card.NumberCost, &card.IDExternal, &card.IDAsset,
-			&card.IDRarity, &card.IDSet, &card.CreatedAt, &deletedAt,
-		)
-		if err != nil {
-			logger.Error("schema.resolve.cardby.err_fetch", l.NewValue("error", err))
-			return nil, err
-		}
-		if deletedAt.Valid {
-			card.DeletedAt = &deletedAt.Time
-		}
-		cards = append(cards, card)
-	}
-	logger.Info("schema.resolve.cardby.result", l.NewValue("cards.len", len(cards)))
-	return cards, err
 }
 
 /*

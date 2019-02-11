@@ -1,7 +1,7 @@
 scalar DateTime
 scalar Object
 
-enum RarityId {
+enum RarityName {
   Common
   Uncommon
   Rare
@@ -25,8 +25,8 @@ enum RarityAlias {
 
 type Rarity {
   id: ID!
-  name: String!
-  alias: String!
+  name: RarityName!
+  alias: RarityAlias!
 }
 
 type Set {
@@ -65,23 +65,24 @@ type Card {
 }
 
 input RarityFilter {
-  id: RarityId!
-  alias: RarityAlias!
+  id: ID
+  name: RarityName
+  alias: RarityAlias
 }
 
 input SetFilter {
-  id: ID!
-  name: String!
-  alias: String!
+  id: ID
+  name: String
+  alias: String
 }
 
 input CardFilter {
-  id: ID!
-  name: String!
-  types: [String!]!
-  costs: [String!]!
-  set: SetFilter!
-  rarity: RarityFilter!
+  id: ID
+  name: String
+  types: String
+  costs: String
+  set: SetFilter
+  rarity: RarityFilter
 }
 
 type Query {

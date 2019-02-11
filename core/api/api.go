@@ -23,7 +23,7 @@ func GraphQL(tree yggdrasil.Tree, w http.ResponseWriter, r *http.Request) {
 		logger      = l.MustReference(tree)
 		schema      = graphql.MustReference(tree)
 		contentType = r.Header.Get("Content-Type")
-		q           graphql.Params
+		q           graphql.Request
 	)
 	logger.Info("graphql.request.try",
 		l.NewValue("tid", r.Context().Value("tid")),
@@ -49,7 +49,7 @@ func GraphQL(tree yggdrasil.Tree, w http.ResponseWriter, r *http.Request) {
 				w.WriteHeader(http.StatusBadRequest)
 				return
 			}
-			q = graphql.Params{Query: string(body)}
+			q = graphql.Request{Query: string(body)}
 		default:
 			err := json.NewDecoder(r.Body).Decode(&q)
 			if err != nil {

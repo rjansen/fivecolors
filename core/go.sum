@@ -47,6 +47,8 @@ github.com/rjansen/l v0.0.0-20190127231537-1cd311bd3239 h1:dboSlKnXXPijPfpA51irh
 github.com/rjansen/l v0.0.0-20190127231537-1cd311bd3239/go.mod h1:57QQbQVubuS7DMwS9iNynECe+gg3HTlce+W/rVTLXuY=
 github.com/rjansen/raizel v0.0.0-20190128043717-4b14151acd4d h1:Xo2ePbvZBrg4xG4rFiEybxUel6k098fFnnw6F2trhQA=
 github.com/rjansen/raizel v0.0.0-20190128043717-4b14151acd4d/go.mod h1:R5L9vjD5sn1esp52V7gugzgW25CLNqIoxVtzBtKkNhw=
+github.com/rjansen/raizel v0.0.1 h1:nGGrbPmoJ8PwbeHqJ8avVWWt2A+2QGq71on9jeWzhto=
+github.com/rjansen/raizel v0.0.1/go.mod h1:R5L9vjD5sn1esp52V7gugzgW25CLNqIoxVtzBtKkNhw=
 github.com/rjansen/yggdrasil v0.0.0-20181227000752-df945dd64e50/go.mod h1:yntPro4xwM2GbG/29nbbLe7lK+jnX892RvS/MuM00I0=
 github.com/rjansen/yggdrasil v0.0.0-20190113202223-f5e7a218aac6 h1:PraQ6XxVWdv/iZFiPSfPFHCaMncUhsZws3MUQPOno0c=
 github.com/rjansen/yggdrasil v0.0.0-20190113202223-f5e7a218aac6/go.mod h1:yntPro4xwM2GbG/29nbbLe7lK+jnX892RvS/MuM00I0=

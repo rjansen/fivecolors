@@ -10,16 +10,32 @@ import (
 	"github.com/vektah/gqlparser/validator"
 )
 
-type Params struct {
+type Schema struct {
+	graphql.ExecutableSchema
+}
+
+func NewSchema(executableSchema graphql.ExecutableSchema) Schema {
+	return Schema{ExecutableSchema: executableSchema}
+}
+
+type Request struct {
 	Query         string                 `json:"query"`
 	OperationName string                 `json:"operationName"`
 	Variables     map[string]interface{} `json:"variables"`
 }
 
-func Execute(tree yggdrasil.Tree, schema graphql.ExecutableSchema, params Params) *graphql.Response {
-	response := new(graphql.Response)
+type Response struct {
+	*graphql.Response
+}
 
-	doc, parserErr := parser.ParseQuery(&ast.Source{Input: params.Query})
+func newResponse() *Response {
+	return &Response{Response: new(graphql.Response)}
+}
+
+func Execute(tree yggdrasil.Tree, schema Schema, request Request) *Response {
+	response := newResponse()
+
+	doc, parserErr := parser.ParseQuery(&ast.Source{Input: request.Query})
 	if parserErr != nil {
 		response.Errors = append(response.Errors, parserErr)
 		return response
@@ -31,8 +47,8 @@ func Execute(tree yggdrasil.Tree, schema graphql.ExecutableSchema, params Params
 		return response
 	}
 
-	op := doc.Operations.ForName(params.OperationName)
-	vars, varsErr := validator.VariableValues(schema.Schema(), op, params.Variables)
+	op := doc.Operations.ForName(request.OperationName)
+	vars, varsErr := validator.VariableValues(schema.Schema(), op, request.Variables)
 	if varsErr != nil {
 		response.Errors = append(response.Errors, varsErr)
 		return response
@@ -40,7 +56,7 @@ func Execute(tree yggdrasil.Tree, schema graphql.ExecutableSchema, params Params
 
 	ctx := graphql.WithRequestContext(
 		context.Background(),
-		graphql.NewRequestContext(doc, params.Query, vars),
+		graphql.NewRequestContext(doc, request.Query, vars),
 	)
-	return schema.Query(ctx, op)
+	return &Response{Response: schema.Query(ctx, op)}
 }
