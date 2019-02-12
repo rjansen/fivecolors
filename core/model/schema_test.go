@@ -77,14 +77,15 @@ func TestSchema(test *testing.T) {
 			columns: []string{
 				"id", "name", "number_cost", "id_external", "id_rarity", "id_set", "id_asset",
 				"rate", "rate_votes", "order_external", "artist", "flavor", "data",
-				"created_at", "updated_at", "deleted_at",
+				"types", "costs", "rules", "created_at", "updated_at", "deleted_at",
 			},
 			rows: [][]interface{}{
 				{
 
 					"mock_id", "mock_name", 2.0, "mock_id_external", "mock_id_rarity", "mock_id_set",
 					"mock_id_asset", 0.0, 0, "1022A", "Mock Artist", "Mock Flavor",
-					Object{"key1": "value1", "key2": 10}, time.Now().UTC(), time.Now().UTC(), time.Now().UTC(),
+					Object{"key1": "value1", "key2": 10}, `{"Legendary","Mock"}`, `{"1","B","U"}`,
+					`{"rule one bla bla","more bla"}`, time.Now().UTC(), time.Now().UTC(), time.Now().UTC(),
 				},
 			},
 			request: graphql.Request{
@@ -154,32 +155,36 @@ func TestSchema(test *testing.T) {
 			columns: []string{
 				"id", "name", "number_cost", "id_external", "id_rarity", "id_set", "id_asset",
 				"rate", "rate_votes", "order_external", "artist", "flavor", "data",
-				"created_at", "updated_at", "deleted_at",
+				"types", "costs", "rules", "created_at", "updated_at", "deleted_at",
 			},
 			rows: [][]interface{}{
 				{
 
 					"mock_id", "mock_name", 2.0, "mock_id_external", "mock_id_rarity", "mock_id_set",
 					"mock_id_asset", 0.0, 0, "1022A", "Mock Artist", "Mock Flavor",
-					Object{"key1": "value1", "key2": 10}, time.Now().UTC(), time.Now().UTC(), time.Now().UTC(),
+					Object{"key1": "value1", "key2": 10}, `{"Legendary","Mock"}`, `{"1","B","U"}`,
+					`{"rule one bla bla","more bla"}`, time.Now().UTC(), time.Now().UTC(), time.Now().UTC(),
 				},
 				{
 
 					"mock_id", "mock_name", 2.0, "mock_id_external", "mock_id_rarity", "mock_id_set",
 					"mock_id_asset", 0.0, 0, "1022A", "Mock Artist", "Mock Flavor",
-					Object{"key1": "value1", "key2": 10}, time.Now().UTC(), time.Now().UTC(), time.Now().UTC(),
+					Object{"key1": "value1", "key2": 10}, `{"Legendary","Mock"}`, `{"1","B","U"}`,
+					`{"rule one bla bla","more bla"}`, time.Now().UTC(), time.Now().UTC(), time.Now().UTC(),
 				},
 				{
 
 					"mock_id", "mock_name", 2.0, "mock_id_external", "mock_id_rarity", "mock_id_set",
 					"mock_id_asset", 0.0, 0, "1022A", "Mock Artist", "Mock Flavor",
-					Object{"key1": "value1", "key2": 10}, time.Now().UTC(), time.Now().UTC(), time.Now().UTC(),
+					Object{"key1": "value1", "key2": 10}, `{"Legendary","Mock"}`, `{"1","B","U"}`,
+					`{"rule one bla bla","more bla"}`, time.Now().UTC(), time.Now().UTC(), time.Now().UTC(),
 				},
 				{
 
 					"mock_id", "mock_name", 2.0, "mock_id_external", "mock_id_rarity", "mock_id_set",
 					"mock_id_asset", 0.0, 0, "1022A", "Mock Artist", "Mock Flavor",
-					Object{"key1": "value1", "key2": 10}, time.Now().UTC(), time.Now().UTC(), time.Now().UTC(),
+					Object{"key1": "value1", "key2": 10}, `{"Legendary","Mock"}`, `{"1","B","U"}`,
+					`{"rule one bla bla","more bla"}`, time.Now().UTC(), time.Now().UTC(), time.Now().UTC(),
 				},
 			},
 			request: graphql.Request{
@@ -286,7 +291,7 @@ func TestSchema(test *testing.T) {
 				t.Logf("json data=%q", response.Data)
 				err := json.Unmarshal(response.Data, scenario.data)
 				require.Nil(t, err, "schema response unmarshal error")
-				require.NotZero(t, scenario.data, "data response invalid")
+				require.NotZerof(t, scenario.data, "data response invalid: %+v", scenario.data)
 				require.Nil(t, scenario.dbMock.ExpectationsWereMet(), "dbmock invalid expectations")
 			},
 		)

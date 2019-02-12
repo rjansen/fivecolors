@@ -40,7 +40,7 @@ func (r *queryResolver) Card(ctx context.Context, id string) (Card, error) {
 		logger = l.MustReference(r.tree)
 		q      = `select id, name, number_cost, id_external, id_rarity, id_set, id_asset,
                          rate, rate_votes, order_external, artist, flavor, data,
-					     created_at, updated_at, deleted_at
+					     types, costs, rules, created_at, updated_at, deleted_at
 				  from card where id = $1`
 		card                          Card
 		deletedAt, updatedAt          pq.NullTime
@@ -52,7 +52,8 @@ func (r *queryResolver) Card(ctx context.Context, id string) (Card, error) {
 	err := row.Scan(
 		&card.ID, &card.Name, &card.NumberCost, &card.IDExternal, &card.IDRarity, &card.IDSet,
 		&card.IDAsset, &card.Rate, &card.RateVotes, &orderExternal, &artist, &flavor, &card.Data,
-		&card.CreatedAt, &updatedAt, &deletedAt,
+		pq.Array(&card.Types), pq.Array(&card.Costs), pq.Array(&card.Rules), &card.CreatedAt,
+		&updatedAt, &deletedAt,
 	)
 	if err != nil {
 		if err == stdsql.ErrNoRows {
@@ -86,7 +87,7 @@ func (r *queryResolver) CardBy(ctx context.Context, filter CardFilter) ([]Card, 
 		logger = l.MustReference(r.tree)
 		s      = `select id, name, number_cost, id_external, id_rarity, id_set, id_asset,
                          rate, rate_votes, order_external, artist, flavor, data,
-					     created_at, updated_at, deleted_at
+					     types, costs, rules, created_at, updated_at, deleted_at
 				  from card where `
 		q string
 		a []interface{}
@@ -161,7 +162,8 @@ func (r *queryResolver) CardBy(ctx context.Context, filter CardFilter) ([]Card, 
 		err := rows.Scan(
 			&card.ID, &card.Name, &card.NumberCost, &card.IDExternal, &card.IDRarity, &card.IDSet,
 			&card.IDAsset, &card.Rate, &card.RateVotes, &orderExternal, &artist, &flavor, &card.Data,
-			&card.CreatedAt, &updatedAt, &deletedAt,
+			pq.Array(&card.Types), pq.Array(&card.Costs), pq.Array(&card.Rules), &card.CreatedAt,
+			&updatedAt, &deletedAt,
 		)
 		if err != nil {
 			logger.Error("schema.resolve.cardby.err_fetch", l.NewValue("error", err))

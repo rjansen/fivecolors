@@ -260,7 +260,7 @@ func TestSchemaPostgres(test *testing.T) {
 				{sql: "delete from set where id = $1", arguments: []interface{}{"mock_setid1"}},
 			},
 			data: &struct {
-				Card []Card `json:"card"`
+				Card []Card `json:"cardBy"`
 			}{},
 			request: graphql.Request{
 				Query: `{
@@ -324,7 +324,7 @@ func TestSchemaPostgres(test *testing.T) {
 			},
 
 			data: &struct {
-				Set []Set `json:"set"`
+				Set []Set `json:"setBy"`
 			}{},
 			request: graphql.Request{
 				Query: `{
@@ -371,7 +371,7 @@ func TestSchemaPostgres(test *testing.T) {
 				require.NotNilf(t, response.Data, "schema response nil: %+v", response.Data)
 				err := json.Unmarshal(response.Data, scenario.data)
 				require.Nil(t, err, "schema response unmarshal error")
-				require.NotZero(t, scenario.data, "data response invalid")
+				require.NotZerof(t, scenario.data, "data response invalid: %+v", scenario.data)
 			},
 		)
 	}
