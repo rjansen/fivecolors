@@ -1,6 +1,49 @@
 .PHONY: ci
 ci: vet coverage.text bench
 
+.PHONY: clearcache
+clearcache:
+	@echo "$(ROOT_REPO)@$(BUILD) clearcache"
+	-rm -Rf $(DEPS_DIR)
+	-$(HOME)/.cache/go-build
+	-$(HOME)/gopath/pkg/mod
+	-$(foreach path,$(MODULE_LIST),ls -ld $(BASE_DIR)/$(path)/vendor;)
+
+$(DEPS_DIR):
+	mkdir -p $(DEPS_DIR)
+
+.PHONY: module.setup
+module.setup: $(GOTESTSUM) $(CODECOV)
+	@echo "$(ROOT_REPO)@$(BUILD) module.setup bin=$(CODECOV) file=$(CODECOV_FILE)"
+
+$(GOTESTSUM_FILE): | $(DEPS_DIR)
+	@echo "$(ROOT_REPO)@$(BUILD) $(GOTESTSUM_FILE)"
+	curl -o $(GOTESTSUM_FILE) -L $(GOTESTSUM_URL)
+
+$(GOTESTSUM): | $(GOTESTSUM_FILE)
+	@echo "$(ROOT_REPO)@$(BUILD) $(GOTESTSUM)"
+	@cd $(DEPS_DIR) && tar xf $(GOTESTSUM_NAME) && mv -f $(GOTESTSUM_BIN) $(TOOLS_DIR)
+	$(GOTESTSUM) --help > /dev/null 2>&1
+
+$(CODECOV_FILE): | $(DEPS_DIR)
+	@echo "$(ROOT_REPO)@$(BUILD) $(CODECOV_FILE)"
+	curl -o $(CODECOV_FILE) -L $(CODECOV_URL)
+
+$(CODECOV): | $(CODECOV_FILE)
+	@echo "$(ROOT_REPO)@$(BUILD) $(CODECOV)"
+	cd $(DEPS_DIR) && chmod a+x $(CODECOV_NAME) && cp -f $(CODECOV_BIN) $(TOOLS_DIR)
+	$(CODECOV) -h > /dev/null 2>&1
+
+.PHONY: setup.debug
+module.setup.debug: dlv.setup
+	@echo "$(ROOT_REPO)@$(BUILD) module.setup.debug"
+
+.PHONY: delv.setup
+dlv.setup:
+	@echo "$(ROOT_REPO)@$(BUILD) dlv.setup"
+	which dlv || go get -u github.com/derekparker/delve/cmd/dlv
+	dlv version > /dev/null 2>&1
+
 .PHONY: build
 build: $(TMP_DIR)
 	@echo "$(REPO)@$(BUILD) build"
@@ -34,24 +77,24 @@ vet:
 .PHONY: test
 test:
 	@echo "$(REPO)@$(BUILD) test $(REPO) - $(TEST_PKGS)"
-	cd $(MODULE_DIR) && gotestsum -f short-verbose -- -v -race -run $(TESTS) $(TEST_PKGS)
+	cd $(MODULE_DIR) && $(GOTESTSUM) -f short-verbose -- -v -race -run $(TESTS) $(TEST_PKGS)
 
 .PHONY: itest
 itest:
 	@echo "$(REPO)@$(BUILD) itest"
-	cd $(MODULE_DIR) && gotestsum -f short-verbose -- -tags=integration -v -race -run $(TESTS) $(TEST_PKGS)
+	cd $(MODULE_DIR) && $(GOTESTSUM) -f short-verbose -- -tags=integration -v -race -run $(TESTS) $(TEST_PKGS)
 
 .PHONY: bench
 bench:
 	@echo "$(REPO)@$(BUILD) bench"
-	cd $(MODULE_DIR) && gotestsum -f short-verbose -- -bench=. -run="^$$" -benchmem $(TEST_PKGS)
+	cd $(MODULE_DIR) && $(GOTESTSUM) -f short-verbose -- -bench=. -run="^$$" -benchmem $(TEST_PKGS)
 
 .PHONY: coverage
 coverage: $(TMP_DIR)
 	@echo "$(REPO)@$(BUILD) coverage"
 	ls -ld $(TMP_DIR)
 	@touch $(COVERAGE_FILE)
-	cd $(MODULE_DIR) && gotestsum -f short-verbose -- -tags=integration -v -run $(TESTS) \
+	cd $(MODULE_DIR) && $(GOTESTSUM) -f short-verbose -- -tags=integration -v -run $(TESTS) \
 			  -covermode=atomic -coverpkg=$(PKGS) -coverprofile=$(COVERAGE_FILE) $(TEST_PKGS)
 
 .PHONY: coverage.text
@@ -68,6 +111,4 @@ coverage.html: coverage
 .PHONY: coverage.push
 coverage.push:
 	@echo "$(REPO) coverage.push"
-	@#download codecov script and push report with oneline cmd
-	@#curl -sL https://codecov.io/bash | bash -s - -f $(COVERAGE_FILE)$(if $(CODECOV_TOKEN), -t $(CODECOV_TOKEN),)
-	@codecov -f $(COVERAGE_FILE)$(if $(CODECOV_TOKEN), -t $(CODECOV_TOKEN),)
+	$(CODECOV) -f $(COVERAGE_FILE)$(if $(CODECOV_TOKEN), -t $(CODECOV_TOKEN),)

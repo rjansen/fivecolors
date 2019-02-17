@@ -5,11 +5,12 @@ cache:
   directories:
     - $HOME/.cache/go-build
     - $HOME/gopath/pkg/mod
+    - ./tmp/deps
 
 go:
     - 1.11.x
 
-install: sudo make setup postgres.setup clean
+install: sudo make setup module.setup postgres.setup clean
 
 before_script:
     - sudo /etc/init.d/postgresql stop

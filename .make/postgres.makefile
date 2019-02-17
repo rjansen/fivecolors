@@ -1,19 +1,22 @@
 .PHONY: postgres.setup
-postgres.setup:
-	which migrate || (\
-		cd $(TMP_DIR) && \
-		curl -O -L https://github.com/golang-migrate/migrate/releases/download/v4.2.3/migrate.linux-amd64.tar.gz && \
-		tar xf migrate.linux-amd64.tar.gz && \
-		mv -f migrate.linux-amd64 /usr/local/bin/migrate \
-	)
-	migrate -help > /dev/null 2>&1
+postgres.setup: $(MIGRATE)
+	@echo "$(ROOT_REPO)@$(BUILD) postgres.setup"
+
+$(MIGRATE_FILE): | $(DEPS_DIR)
+	@echo "$(ROOT_REPO)@$(BUILD) $(MIGRATE_FILE)"
+	curl -o $(MIGRATE_FILE) -L $(MIGRATE_URL)
+
+$(MIGRATE): | $(MIGRATE_FILE)
+	@echo "$(ROOT_REPO)@$(BUILD) $(MIGRATE)"
+	@cd $(DEPS_DIR) && tar xf $(MIGRATE_NAME) && mv -f $(MIGRATE_FILENAME) $(TOOLS_DIR)/$(MIGRATE_BIN)
+	$(MIGRATE) -help > /dev/null 2>&1
 
 .PHONY: postgres.run
 postgres.run:
 	@echo "$(REPO) postgres.run"
 	docker run --rm -d --name postgres-run --net=host \
-		-v "$(POSTGRES_SCRIPTS_DIR):/docker-entrypoint-initdb.d" postgres:11.1
-	@sleep 5 #wait until database is ready
+		-v "$(POSTGRES_SCRIPTS_DIR):/docker-entrypoint-initdb.d" postgres:$(POSTGRES_VERSION)
+	@sleep 7 #wait until database is ready
 
 .PHONY: postgres.kill
 postgres.kill:
@@ -30,7 +33,7 @@ postgres.scripts:
 .PHONY: postgres.psql
 postgres.psql:
 	@echo "$(REPO) postgres.psql"
-	docker run --rm -it --name psql-run --net=host postgres:11.1 \
+	docker run --rm -it --name psql-run --net=host postgres:$(POSTGRES_VERSION) \
 		psql -h $(POSTGRES_HOST) -U $(POSTGRES_USER) -d $(POSTGRES_DATABASE)
 
 .PHONY: postgres.migrations.run
