@@ -17,6 +17,10 @@ resolver:
 model:
   filename: core/model/types.go
 
+struct_tag:
+    - json
+    - firestore
+
 models:
   Object:
     model: github.com/rjansen/fivecolors/core/model.Object

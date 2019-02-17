@@ -1,4 +1,4 @@
-package server
+package function
 
 import (
 	stdsql "database/sql"
@@ -7,6 +7,7 @@ import (
 
 	"github.com/rjansen/fivecolors/core/api"
 	"github.com/rjansen/fivecolors/core/graphql"
+	"github.com/rjansen/fivecolors/core/model"
 	"github.com/rjansen/l"
 	"github.com/rjansen/migi"
 	"github.com/rjansen/raizel/sql"
@@ -43,12 +44,10 @@ func newOptions() options {
 
 func newTree() yggdrasil.Tree {
 	var (
-		options   = newOptions()
-		logger    = l.NewZapLoggerDefault()
-		roots     = yggdrasil.NewRoots()
-		err       error
-		sqlDriver string
-		sqlDsn    string
+		options = newOptions()
+		logger  = l.NewZapLoggerDefault()
+		roots   = yggdrasil.NewRoots()
+		err     error
 	)
 
 	err = l.Register(&roots, logger)
@@ -67,7 +66,7 @@ func newTree() yggdrasil.Tree {
 	if err != nil {
 		panic(err)
 	}
-	err = graphql.Register(&roots, NewSchema(roots.NewTreeDefault()))
+	err = graphql.Register(&roots, model.NewSchema(roots.NewTreeDefault()))
 	if err != nil {
 		panic(err)
 	}
@@ -77,7 +76,9 @@ func newTree() yggdrasil.Tree {
 func Handler(w http.ResponseWriter, r *http.Request) {
 	once.Do(
 		func() {
-			serverHandler = api.NewGraphQLHandler(newTree())
+			if serverHandler == nil {
+				serverHandler = api.NewGraphQLHandler(newTree())
+			}
 		},
 	)
 	serverHandler(w, r)

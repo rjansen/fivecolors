@@ -1,3 +1,5 @@
+// +build !firestore
+
 package model
 
 import (
@@ -30,11 +32,6 @@ func (r *Resolver) Query() QueryResolver {
 type queryResolver struct{ *Resolver }
 
 func (r *queryResolver) Card(ctx context.Context, id string) (Card, error) {
-	/*
-	   types varchar(128)[] not null,
-	   costs varchar(5)[] not null default '{}',
-	   rules varchar(512)[] not null default '{}',
-	*/
 	var (
 		db     = sql.MustReference(r.tree)
 		logger = l.MustReference(r.tree)

@@ -10,27 +10,50 @@ import (
 
 	"github.com/julienschmidt/httprouter"
 	_ "github.com/lib/pq"
-	"github.com/rjansen/fivecolors/core/config"
 	"github.com/rjansen/fivecolors/core/resource"
-	"github.com/rs/zerolog/log"
+	"github.com/rjansen/l"
+	"github.com/rjansen/migi"
+	"github.com/rjansen/yggdrasil"
 )
 
 var (
 	version string
 )
 
-func init() {
-	err := config.Init()
+type options struct {
+	bindAddress string
+}
+
+func newOptions() options {
+	var (
+		env     = migi.NewOptions(migi.NewEnvironmentSource())
+		options options
+	)
+	env.StringVar(
+		&options.bindAddress, "server_bindaddress", ":8080", "Server bind address, ip:port",
+	)
+	env.Parse()
+	return options
+}
+
+func newTree(options options) yggdrasil.Tree {
+	var (
+		logger = l.NewZapLoggerDefault()
+		roots  = yggdrasil.NewRoots()
+		err    error
+	)
+
+	err = l.Register(&roots, logger)
 	if err != nil {
 		panic(err)
 	}
-	log.Logger = log.With().Str("version", version).Logger()
-	log.Info().Msg("asset.resource.init.try")
-	err = resource.Init()
-	if err != nil {
-		panic(err)
+	return roots.NewTreeDefault()
+}
+
+func httpRouterHandler(handler http.HandlerFunc) func(http.ResponseWriter, *http.Request, httprouter.Params) {
+	return func(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
+		handler(w, r)
 	}
-	log.Info().Msg("asset.initialized")
 }
 
 func healthCheck(w http.ResponseWriter, r *http.Request, p httprouter.Params) {
@@ -39,35 +62,43 @@ func healthCheck(w http.ResponseWriter, r *http.Request, p httprouter.Params) {
 }
 
 func main() {
-	log.Info().Msg("asset.start")
-	stop := make(chan os.Signal, 1)
-	signal.Notify(stop, os.Interrupt)
+	var (
+		options = newOptions()
+		tree    = newTree(options)
+		logger  = l.MustReference(tree)
+		router  = httprouter.New()
+	)
 
-	log.Info().Msg("asset.router.init")
-	router := httprouter.New()
+	logger.Info("asset.router.init")
+
 	router.GET("/asset/healthcheck", healthCheck)
-	router.GET("/asset/files/:assetID", resource.ReadAsset)
+	router.GET("/asset/files/:assetID", httpRouterHandler(resource.ReadAsset))
 
-	log.Info().Str("address", resource.BindAddress()).Msg("asset.create")
 	server := &http.Server{
-		Addr:    resource.BindAddress(),
+		Addr:    options.bindAddress,
 		Handler: router,
 	}
 
+	logger.Info("asset.router.created")
+
+	stop := make(chan os.Signal, 1)
+	signal.Notify(stop, os.Interrupt, os.Kill)
+
 	go func() {
-		log.Info().Str("address", resource.BindAddress()).Msg("asset.listening")
+		logger.Info("asset.starting", l.NewValue("address", options.bindAddress))
 
 		if err := server.ListenAndServe(); err != nil {
-			log.Fatal().Err(err).Str("address", resource.BindAddress()).Msg("asset.listen.err")
+			logger.Error(
+				"asset.err", l.NewValue("error", err), l.NewValue("address", options.bindAddress),
+			)
 		}
 	}()
 
 	<-stop
 
-	log.Info().Str("address", resource.BindAddress()).Msg("asset.shutdown")
 	shutDownCtx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
+	logger.Info("asset.shutdown")
 	server.Shutdown(shutDownCtx)
-	log.Info().Str("address", resource.BindAddress()).Msg("asset.gracefully.stoped")
-	log.Info().Msg("asset.end")
+	logger.Info("asset.shutdown.gracefully")
 }

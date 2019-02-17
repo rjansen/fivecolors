@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	stdsql "database/sql"
 	"fmt"
 	"net/http"
 	"os"
@@ -11,27 +12,73 @@ import (
 	"github.com/julienschmidt/httprouter"
 	_ "github.com/lib/pq"
 	"github.com/rjansen/fivecolors/core/api"
-	"github.com/rjansen/fivecolors/core/config"
+	"github.com/rjansen/fivecolors/core/graphql"
 	"github.com/rjansen/fivecolors/core/model"
-	"github.com/rs/zerolog/log"
+	"github.com/rjansen/l"
+	"github.com/rjansen/migi"
+	"github.com/rjansen/raizel/sql"
+	"github.com/rjansen/yggdrasil"
 )
 
-func init() {
-	err := config.Init()
+var (
+	version string
+)
+
+type options struct {
+	bindAddress string
+	driver      string
+	dsn         string
+}
+
+func newOptions() options {
+	var (
+		env     = migi.NewOptions(migi.NewEnvironmentSource())
+		options options
+	)
+	env.StringVar(
+		&options.bindAddress, "server_bindaddress", ":8080", "Server bind address, ip:port",
+	)
+	env.StringVar(
+		&options.driver, "raizel_driver", "postgres", "Raizel database driver",
+	)
+	env.StringVar(
+		&options.dsn,
+		"raizel_dsn",
+		"postgres://postgres:@127.0.0.1:5432/postgres?sslmode=disable",
+		"Raizel datasource name format",
+	)
+	env.Parse()
+	return options
+}
+
+func newTree(options options) yggdrasil.Tree {
+	var (
+		logger = l.NewZapLoggerDefault()
+		roots  = yggdrasil.NewRoots()
+		err    error
+	)
+
+	err = l.Register(&roots, logger)
 	if err != nil {
 		panic(err)
 	}
-	log.Info().Msg("server.init.model.try")
-	err = model.Init()
+	sqlDB, err := stdsql.Open(options.driver, options.dsn)
 	if err != nil {
 		panic(err)
 	}
-	log.Info().Msg("server.init.api.try")
-	err = api.Init(model.NewSchemaConfig())
+	db, err := sql.NewDB(sqlDB)
 	if err != nil {
 		panic(err)
 	}
-	log.Info().Msg("server.initialized")
+	err = sql.Register(&roots, db)
+	if err != nil {
+		panic(err)
+	}
+	err = graphql.Register(&roots, model.NewSchema(roots.NewTreeDefault()))
+	if err != nil {
+		panic(err)
+	}
+	return roots.NewTreeDefault()
 }
 
 func httpRouterHandler(handler http.HandlerFunc) func(http.ResponseWriter, *http.Request, httprouter.Params) {
@@ -46,36 +93,45 @@ func healthCheck(w http.ResponseWriter, r *http.Request) {
 }
 
 func main() {
-	log.Info().Msg("server.start")
-	stop := make(chan os.Signal, 1)
-	signal.Notify(stop, os.Interrupt)
+	var (
+		options        = newOptions()
+		tree           = newTree(options)
+		logger         = l.MustReference(tree)
+		graphqlHandler = httpRouterHandler(api.NewGraphQLHandler(tree))
+		router         = httprouter.New()
+	)
 
-	log.Info().Msg("server.router.init")
-	router := httprouter.New()
+	logger.Info("server.router.init")
+
 	router.GET("/api/healthcheck", httpRouterHandler(healthCheck))
-	router.GET("/api/query", httpRouterHandler(api.GraphQL))
-	router.POST("/api/query", httpRouterHandler(api.GraphQL))
+	router.GET("/api/query", graphqlHandler)
+	router.POST("/api/query", graphqlHandler)
 
-	log.Info().Str("address", api.BindAddress()).Msg("server.create")
 	server := &http.Server{
-		Addr:    api.BindAddress(),
+		Addr:    options.bindAddress,
 		Handler: router,
 	}
 
+	logger.Info("server.router.created")
+
+	stop := make(chan os.Signal, 1)
+	signal.Notify(stop, os.Interrupt, os.Kill)
+
 	go func() {
-		log.Info().Str("address", api.BindAddress()).Msg("server.listening")
+		logger.Info("server.starting", l.NewValue("address", options.bindAddress))
 
 		if err := server.ListenAndServe(); err != nil {
-			log.Fatal().Err(err).Str("address", api.BindAddress()).Msg("server.listen.err")
+			logger.Error(
+				"server.err", l.NewValue("error", err), l.NewValue("address", options.bindAddress),
+			)
 		}
 	}()
 
 	<-stop
 
-	log.Info().Str("address", api.BindAddress()).Msg("server.shutdown")
 	shutDownCtx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
+	logger.Info("server.shutdown")
 	server.Shutdown(shutDownCtx)
-	log.Info().Str("address", api.BindAddress()).Msg("server.gracefully.stoped")
-	log.Info().Msg("server.end")
+	logger.Info("server.shutdown.gracefully")
 }
