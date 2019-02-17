@@ -1,3 +1,5 @@
+// +build !firestore
+
 package model
 
 import (

@@ -67,7 +67,7 @@ debug:
 .PHONY: debugtest
 debugtest:
 	@echo "$(REPO)@$(BUILD) debugtest"
-	cd $(MODULE_DIR) && dlv test $(DEBUG_PKG) -- -test.run $(TESTS)
+	cd $(MODULE_DIR) && dlv test $(DEBUG_PKG) --build-flags="-tags '$(ITEST_FLAGS)'" -- -test.run $(TESTS)
 
 .PHONY: vet
 vet:
@@ -82,7 +82,7 @@ test:
 .PHONY: itest
 itest:
 	@echo "$(REPO)@$(BUILD) itest"
-	cd $(MODULE_DIR) && $(GOTESTSUM) -f short-verbose -- -tags=integration -v -race -run $(TESTS) $(TEST_PKGS)
+	cd $(MODULE_DIR) && $(GOTESTSUM) -f short-verbose -- -tags="$(ITEST_FLAGS)" -v -race -run $(TESTS) $(TEST_PKGS)
 
 .PHONY: bench
 bench:
@@ -94,7 +94,7 @@ coverage: $(TMP_DIR)
 	@echo "$(REPO)@$(BUILD) coverage"
 	ls -ld $(TMP_DIR)
 	@touch $(COVERAGE_FILE)
-	cd $(MODULE_DIR) && $(GOTESTSUM) -f short-verbose -- -tags=integration -v -run $(TESTS) \
+	cd $(MODULE_DIR) && $(GOTESTSUM) -f short-verbose -- -tags="$(ITEST_FLAGS)" -v -run $(TESTS) \
 			  -covermode=atomic -coverpkg=$(PKGS) -coverprofile=$(COVERAGE_FILE) $(TEST_PKGS)
 
 .PHONY: coverage.text
