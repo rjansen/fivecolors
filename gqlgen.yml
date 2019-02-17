@@ -8,18 +8,9 @@ schema:
 
 exec:
   filename: core/model/generated.go
-  type: generated
-
-resolver:
-  filename: core/model/resolvers.go
-  type: Resolver
 
 model:
   filename: core/model/types.go
-
-struct_tag:
-    - json
-    - firestore
 
 models:
   Object:
@@ -27,3 +18,6 @@ models:
   DateTime:
     model: github.com/rjansen/fivecolors/core/model.DateTime
 
+resolver:
+  filename: core/model/resolvers.go
+  type: Resolver
