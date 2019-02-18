@@ -12,15 +12,17 @@ import (
 type Card struct {
 	ID            string     `json:"id"`
 	Name          string     `json:"name"`
+	TypesObject   Object     `json:"typesObject"`
+	CostsObject   *Object    `json:"costsObject"`
 	Types         []string   `json:"types"`
 	Costs         []string   `json:"costs"`
 	NumberCost    float64    `json:"numberCost"`
 	IDExternal    string     `json:"idExternal"`
 	OrderExternal *string    `json:"orderExternal"`
 	IDRarity      string     `json:"idRarity"`
-	Rarity        Rarity     `json:"rarity"`
+	Rarity        *Rarity    `json:"rarity"`
 	IDSet         string     `json:"idSet"`
-	Set           Set        `json:"set"`
+	Set           *Set       `json:"set"`
 	IDAsset       string     `json:"idAsset"`
 	Rules         []string   `json:"rules"`
 	Rate          *float64   `json:"rate"`
@@ -34,12 +36,16 @@ type Card struct {
 }
 
 type CardFilter struct {
-	ID     *string       `json:"id"`
-	Name   *string       `json:"name"`
-	Types  *string       `json:"types"`
-	Costs  *string       `json:"costs"`
-	Set    *SetFilter    `json:"set"`
-	Rarity *RarityFilter `json:"rarity"`
+	ID          *string       `json:"id"`
+	Name        *string       `json:"name"`
+	TypesObject []string      `json:"typesObject"`
+	CostsObject []string      `json:"costsObject"`
+	IDSets      []string      `json:"idSets"`
+	IDRarity    *string       `json:"idRarity"`
+	Types       *string       `json:"types"`
+	Costs       *string       `json:"costs"`
+	Set         *SetFilter    `json:"set"`
+	Rarity      *RarityFilter `json:"rarity"`
 }
 
 type Rarity struct {

@@ -34,7 +34,7 @@ type Set {
   name:  String!
   alias: String!
   asset: Object!
-  cards: [Card!]!
+  cards: [Card!]
   createdAt: DateTime!
   updatedAt: DateTime
   deletedAt: DateTime
@@ -43,15 +43,17 @@ type Set {
 type Card {
   id: ID!
   name: String!
+  typesObject: Object!
+  costsObject: Object
   types: [String!]!
-  costs: [String!]!
+  costs: [String!]
   numberCost: Float!
   idExternal: String!
   orderExternal: String
   idRarity: String!
-  rarity: Rarity!
+  rarity: Rarity
   idSet: String!
-  set: Set!
+  set: Set
   idAsset: String!
   rules: [String!]
   rate: Float
@@ -79,6 +81,10 @@ input SetFilter {
 input CardFilter {
   id: ID
   name: String
+  typesObject: [String!]
+  costsObject: [String!]
+  idSets: [ID!]
+  idRarity: ID
   types: String
   costs: String
   set: SetFilter
