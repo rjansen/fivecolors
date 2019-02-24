@@ -68,77 +68,35 @@ func (r *queryResolver) CardBy(ctx context.Context, filter CardFilter) ([]Card, 
 	if filter.Name != nil {
 		cardsQuery = cardsQuery.Where("Name", ">=", *filter.Name)
 	}
-	for index, typeName := range filter.TypesObject {
-		cardsQuery = cardsQuery.Where(fmt.Sprintf("TypesObject.%d", index), "==", typeName)
+	if len(filter.Types) > 0 {
+		cardsQuery = cardsQuery.Where("Types", "==", filter.Types)
 	}
-	for index, cost := range filter.CostsObject {
-		cardsQuery = cardsQuery.Where(fmt.Sprintf("CostsObject.%d", index), "==", cost)
-	}
-	for _, idSet := range filter.IDSets {
-		cardsQuery = cardsQuery.Where("IDSet", "==", idSet)
-	}
-	if filter.IDRarity != nil {
-		cardsQuery = cardsQuery.Where("IDRarity", "==", *filter.IDRarity)
+	if len(filter.Costs) > 0 {
+		cardsQuery = cardsQuery.Where("Costs", "==", filter.Costs)
 	}
 	if filter.Set != nil {
-		var (
-			setsRef                   = fmt.Sprintf(collectionFmt, "sets")
-			setsQuery firestore.Query = client.Collection(setsRef)
-		)
+		if filter.Set.ID != nil {
+			cardsQuery = cardsQuery.Where("Set.ID", "==", *filter.Set.ID)
+		}
 		if filter.Set.Name != nil {
-			setsQuery = setsQuery.Where("Name", ">=", *filter.Set.Name)
+			cardsQuery = cardsQuery.Where("Set.Name", "==", *filter.Set.Name)
 		}
-		// if filter.Set.Alias != nil {
-		// 	setsQuery = setsQuery.Where("Alias", ">=", *filter.Set.Alias)
-		// }
-		documents, err := setsQuery.Documents(ctx).GetAll()
-		if err != nil {
-			logger.Error("resolve.cardby.firestore.set.query_err", l.NewValue("error", err))
-			return cards, err
-		}
-		for index, document := range documents {
-			var set Set
-			err := document.DataTo(&set)
-			if err != nil {
-				logger.Error(
-					"resolve.cardby.firestore.set.fetch_err",
-					l.NewValue("index", index), l.NewValue("error", err),
-				)
-				return cards, err
-			}
-			cardsQuery = cardsQuery.Where("IDSet", "==", set.ID)
+		if filter.Set.Alias != nil {
+			cardsQuery = cardsQuery.Where("Set.Alias", "==", *filter.Set.Alias)
 		}
 	}
 	if filter.Rarity != nil {
-		var (
-			raritiesRef                   = fmt.Sprintf(collectionFmt, "rarities")
-			raritiesQuery firestore.Query = client.Collection(raritiesRef)
-		)
+		if filter.Rarity.ID != nil {
+			cardsQuery = cardsQuery.Where("Rarity.ID", "==", *filter.Rarity.ID)
+		}
 		if filter.Rarity.Name != nil {
-			raritiesQuery = raritiesQuery.Where("Name", ">=", *filter.Rarity.Name)
+			cardsQuery = cardsQuery.Where("Rarity.Name", "==", *filter.Rarity.Name)
 		}
-		// if filter.Rarity.Alias != nil {
-		// 	raritiesQuery = raritiesQuery.Where("Alias", ">=", *filter.Rarity.Alias)
-		// }
-		documents, err := raritiesQuery.Documents(ctx).GetAll()
-		if err != nil {
-			logger.Error("resolve.cardby.firestore.rarity.query_err", l.NewValue("error", err))
-			return cards, err
-		}
-		for index, document := range documents {
-			var rarity Rarity
-			err := document.DataTo(&rarity)
-			if err != nil {
-				logger.Error(
-					"resolve.cardby.firestore.rarity.fetch_err",
-					l.NewValue("index", index),
-					l.NewValue("error", err),
-				)
-				return cards, err
-			}
-			cardsQuery = cardsQuery.Where("IDRarity", "==", rarity.ID)
+		if filter.Rarity.Alias != nil {
+			cardsQuery = cardsQuery.Where("Rarity.Alias", "==", *filter.Rarity.Alias)
 		}
 	}
+	cardsQuery = cardsQuery.OrderBy("Name", firestore.Asc)
 	logger.Info("resolve.cardby.firestore.query", l.NewValue("query", cardsQuery))
 	documents, err := cardsQuery.Documents(ctx).GetAll()
 	if err != nil {
@@ -203,7 +161,6 @@ func (r *queryResolver) SetBy(ctx context.Context, filter SetFilter) ([]Set, err
 			Asset: map[string]interface{}{
 				"": nil,
 			},
-			Cards:     nil,
 			CreatedAt: time.Time{},
 			UpdatedAt: &time.Time{},
 			DeletedAt: &time.Time{},

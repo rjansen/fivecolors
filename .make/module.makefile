@@ -77,24 +77,24 @@ vet:
 .PHONY: test
 test:
 	@echo "$(REPO)@$(BUILD) test $(REPO) - $(TEST_PKGS)"
-	cd $(MODULE_DIR) && $(GOTESTSUM) -f short-verbose -- -v -race -run $(TESTS) $(TEST_PKGS)
+	cd $(MODULE_DIR) && $(GOTESTSUM) -f $(TEST_VERBOSITY) -- -v -race -run $(TESTS) $(TEST_PKGS)
 
 .PHONY: itest
 itest:
 	@echo "$(REPO)@$(BUILD) itest"
-	cd $(MODULE_DIR) && $(GOTESTSUM) -f short-verbose -- -tags="$(ITEST_FLAGS)" -v -race -run $(TESTS) $(TEST_PKGS)
+	cd $(MODULE_DIR) && $(GOTESTSUM) -f $(TEST_VERBOSITY) -- -tags="$(ITEST_FLAGS)" -v -race -run $(TESTS) $(TEST_PKGS)
 
 .PHONY: bench
 bench:
 	@echo "$(REPO)@$(BUILD) bench"
-	cd $(MODULE_DIR) && $(GOTESTSUM) -f short-verbose -- -bench=. -run="^$$" -benchmem $(TEST_PKGS)
+	cd $(MODULE_DIR) && $(GOTESTSUM) -f $(TEST_VERBOSITY) -- -bench=. -run="^$$" -benchmem $(TEST_PKGS)
 
 .PHONY: coverage
 coverage: $(TMP_DIR)
 	@echo "$(REPO)@$(BUILD) coverage"
 	ls -ld $(TMP_DIR)
 	@touch $(COVERAGE_FILE)
-	cd $(MODULE_DIR) && $(GOTESTSUM) -f short-verbose -- -tags="$(ITEST_FLAGS)" -v -run $(TESTS) \
+	cd $(MODULE_DIR) && $(GOTESTSUM) -f $(TEST_VERBOSITY) -- -tags="$(ITEST_FLAGS)" -v -run $(TESTS) \
 			  -covermode=atomic -coverpkg=$(PKGS) -coverprofile=$(COVERAGE_FILE) $(TEST_PKGS)
 
 .PHONY: coverage.text

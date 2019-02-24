@@ -12,8 +12,6 @@ import (
 type Card struct {
 	ID            string     `json:"id"`
 	Name          string     `json:"name"`
-	TypesObject   Object     `json:"typesObject"`
-	CostsObject   *Object    `json:"costsObject"`
 	Types         []string   `json:"types"`
 	Costs         []string   `json:"costs"`
 	NumberCost    float64    `json:"numberCost"`
@@ -36,16 +34,11 @@ type Card struct {
 }
 
 type CardFilter struct {
-	ID          *string       `json:"id"`
-	Name        *string       `json:"name"`
-	TypesObject []string      `json:"typesObject"`
-	CostsObject []string      `json:"costsObject"`
-	IDSets      []string      `json:"idSets"`
-	IDRarity    *string       `json:"idRarity"`
-	Types       *string       `json:"types"`
-	Costs       *string       `json:"costs"`
-	Set         *SetFilter    `json:"set"`
-	Rarity      *RarityFilter `json:"rarity"`
+	Name   *string       `json:"name"`
+	Types  []string      `json:"types"`
+	Costs  []string      `json:"costs"`
+	Set    *SetFilter    `json:"set"`
+	Rarity *RarityFilter `json:"rarity"`
 }
 
 type Rarity struct {
@@ -65,7 +58,6 @@ type Set struct {
 	Name      string     `json:"name"`
 	Alias     string     `json:"alias"`
 	Asset     Object     `json:"asset"`
-	Cards     []Card     `json:"cards"`
 	CreatedAt time.Time  `json:"createdAt"`
 	UpdatedAt *time.Time `json:"updatedAt"`
 	DeletedAt *time.Time `json:"deletedAt"`

@@ -42,8 +42,6 @@ type ComplexityRoot struct {
 	Card struct {
 		Id            func(childComplexity int) int
 		Name          func(childComplexity int) int
-		TypesObject   func(childComplexity int) int
-		CostsObject   func(childComplexity int) int
 		Types         func(childComplexity int) int
 		Costs         func(childComplexity int) int
 		NumberCost    func(childComplexity int) int
@@ -83,7 +81,6 @@ type ComplexityRoot struct {
 		Name      func(childComplexity int) int
 		Alias     func(childComplexity int) int
 		Asset     func(childComplexity int) int
-		Cards     func(childComplexity int) int
 		CreatedAt func(childComplexity int) int
 		UpdatedAt func(childComplexity int) int
 		DeletedAt func(childComplexity int) int
@@ -228,20 +225,6 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 		}
 
 		return e.complexity.Card.Name(childComplexity), true
-
-	case "Card.typesObject":
-		if e.complexity.Card.TypesObject == nil {
-			break
-		}
-
-		return e.complexity.Card.TypesObject(childComplexity), true
-
-	case "Card.costsObject":
-		if e.complexity.Card.CostsObject == nil {
-			break
-		}
-
-		return e.complexity.Card.CostsObject(childComplexity), true
 
 	case "Card.types":
 		if e.complexity.Card.Types == nil {
@@ -473,13 +456,6 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 
 		return e.complexity.Set.Asset(childComplexity), true
 
-	case "Set.cards":
-		if e.complexity.Set.Cards == nil {
-			break
-		}
-
-		return e.complexity.Set.Cards(childComplexity), true
-
 	case "Set.createdAt":
 		if e.complexity.Set.CreatedAt == nil {
 			break
@@ -558,13 +534,6 @@ func (ec *executionContext) _Card(ctx context.Context, sel ast.SelectionSet, obj
 			if out.Values[i] == graphql.Null {
 				invalid = true
 			}
-		case "typesObject":
-			out.Values[i] = ec._Card_typesObject(ctx, field, obj)
-			if out.Values[i] == graphql.Null {
-				invalid = true
-			}
-		case "costsObject":
-			out.Values[i] = ec._Card_costsObject(ctx, field, obj)
 		case "types":
 			out.Values[i] = ec._Card_types(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
@@ -687,61 +656,6 @@ func (ec *executionContext) _Card_name(ctx context.Context, field graphql.Collec
 	rctx.Result = res
 	ctx = ec.Tracer.StartFieldChildExecution(ctx)
 	return graphql.MarshalString(res)
-}
-
-// nolint: vetshadow
-func (ec *executionContext) _Card_typesObject(ctx context.Context, field graphql.CollectedField, obj *Card) graphql.Marshaler {
-	ctx = ec.Tracer.StartFieldExecution(ctx, field)
-	defer func() { ec.Tracer.EndFieldExecution(ctx) }()
-	rctx := &graphql.ResolverContext{
-		Object: "Card",
-		Args:   nil,
-		Field:  field,
-	}
-	ctx = graphql.WithResolverContext(ctx, rctx)
-	ctx = ec.Tracer.StartFieldResolverExecution(ctx, rctx)
-	resTmp := ec.FieldMiddleware(ctx, obj, func(rctx context.Context) (interface{}, error) {
-		ctx = rctx // use context from middleware stack in children
-		return obj.TypesObject, nil
-	})
-	if resTmp == nil {
-		if !ec.HasError(rctx) {
-			ec.Errorf(ctx, "must not be null")
-		}
-		return graphql.Null
-	}
-	res := resTmp.(Object)
-	rctx.Result = res
-	ctx = ec.Tracer.StartFieldChildExecution(ctx)
-	return res
-}
-
-// nolint: vetshadow
-func (ec *executionContext) _Card_costsObject(ctx context.Context, field graphql.CollectedField, obj *Card) graphql.Marshaler {
-	ctx = ec.Tracer.StartFieldExecution(ctx, field)
-	defer func() { ec.Tracer.EndFieldExecution(ctx) }()
-	rctx := &graphql.ResolverContext{
-		Object: "Card",
-		Args:   nil,
-		Field:  field,
-	}
-	ctx = graphql.WithResolverContext(ctx, rctx)
-	ctx = ec.Tracer.StartFieldResolverExecution(ctx, rctx)
-	resTmp := ec.FieldMiddleware(ctx, obj, func(rctx context.Context) (interface{}, error) {
-		ctx = rctx // use context from middleware stack in children
-		return obj.CostsObject, nil
-	})
-	if resTmp == nil {
-		return graphql.Null
-	}
-	res := resTmp.(*Object)
-	rctx.Result = res
-	ctx = ec.Tracer.StartFieldChildExecution(ctx)
-
-	if res == nil {
-		return graphql.Null
-	}
-	return *res
 }
 
 // nolint: vetshadow
@@ -1779,8 +1693,6 @@ func (ec *executionContext) _Set(ctx context.Context, sel ast.SelectionSet, obj 
 			if out.Values[i] == graphql.Null {
 				invalid = true
 			}
-		case "cards":
-			out.Values[i] = ec._Set_cards(ctx, field, obj)
 		case "createdAt":
 			out.Values[i] = ec._Set_createdAt(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
@@ -1907,63 +1819,6 @@ func (ec *executionContext) _Set_asset(ctx context.Context, field graphql.Collec
 	rctx.Result = res
 	ctx = ec.Tracer.StartFieldChildExecution(ctx)
 	return res
-}
-
-// nolint: vetshadow
-func (ec *executionContext) _Set_cards(ctx context.Context, field graphql.CollectedField, obj *Set) graphql.Marshaler {
-	ctx = ec.Tracer.StartFieldExecution(ctx, field)
-	defer func() { ec.Tracer.EndFieldExecution(ctx) }()
-	rctx := &graphql.ResolverContext{
-		Object: "Set",
-		Args:   nil,
-		Field:  field,
-	}
-	ctx = graphql.WithResolverContext(ctx, rctx)
-	ctx = ec.Tracer.StartFieldResolverExecution(ctx, rctx)
-	resTmp := ec.FieldMiddleware(ctx, obj, func(rctx context.Context) (interface{}, error) {
-		ctx = rctx // use context from middleware stack in children
-		return obj.Cards, nil
-	})
-	if resTmp == nil {
-		return graphql.Null
-	}
-	res := resTmp.([]Card)
-	rctx.Result = res
-	ctx = ec.Tracer.StartFieldChildExecution(ctx)
-
-	arr1 := make(graphql.Array, len(res))
-	var wg sync.WaitGroup
-
-	isLen1 := len(res) == 1
-	if !isLen1 {
-		wg.Add(len(res))
-	}
-
-	for idx1 := range res {
-		idx1 := idx1
-		rctx := &graphql.ResolverContext{
-			Index:  &idx1,
-			Result: &res[idx1],
-		}
-		ctx := graphql.WithResolverContext(ctx, rctx)
-		f := func(idx1 int) {
-			if !isLen1 {
-				defer wg.Done()
-			}
-			arr1[idx1] = func() graphql.Marshaler {
-
-				return ec._Card(ctx, field.Selections, &res[idx1])
-			}()
-		}
-		if isLen1 {
-			f(idx1)
-		} else {
-			go f(idx1)
-		}
-
-	}
-	wg.Wait()
-	return arr1
 }
 
 // nolint: vetshadow
@@ -3500,17 +3355,6 @@ func UnmarshalCardFilter(v interface{}) (CardFilter, error) {
 
 	for k, v := range asMap {
 		switch k {
-		case "id":
-			var err error
-			var ptr1 string
-			if v != nil {
-				ptr1, err = graphql.UnmarshalID(v)
-				it.ID = &ptr1
-			}
-
-			if err != nil {
-				return it, err
-			}
 		case "name":
 			var err error
 			var ptr1 string
@@ -3522,87 +3366,37 @@ func UnmarshalCardFilter(v interface{}) (CardFilter, error) {
 			if err != nil {
 				return it, err
 			}
-		case "typesObject":
-			var err error
-			var rawIf1 []interface{}
-			if v != nil {
-				if tmp1, ok := v.([]interface{}); ok {
-					rawIf1 = tmp1
-				} else {
-					rawIf1 = []interface{}{v}
-				}
-			}
-			it.TypesObject = make([]string, len(rawIf1))
-			for idx1 := range rawIf1 {
-				it.TypesObject[idx1], err = graphql.UnmarshalString(rawIf1[idx1])
-			}
-			if err != nil {
-				return it, err
-			}
-		case "costsObject":
-			var err error
-			var rawIf1 []interface{}
-			if v != nil {
-				if tmp1, ok := v.([]interface{}); ok {
-					rawIf1 = tmp1
-				} else {
-					rawIf1 = []interface{}{v}
-				}
-			}
-			it.CostsObject = make([]string, len(rawIf1))
-			for idx1 := range rawIf1 {
-				it.CostsObject[idx1], err = graphql.UnmarshalString(rawIf1[idx1])
-			}
-			if err != nil {
-				return it, err
-			}
-		case "idSets":
-			var err error
-			var rawIf1 []interface{}
-			if v != nil {
-				if tmp1, ok := v.([]interface{}); ok {
-					rawIf1 = tmp1
-				} else {
-					rawIf1 = []interface{}{v}
-				}
-			}
-			it.IDSets = make([]string, len(rawIf1))
-			for idx1 := range rawIf1 {
-				it.IDSets[idx1], err = graphql.UnmarshalID(rawIf1[idx1])
-			}
-			if err != nil {
-				return it, err
-			}
-		case "idRarity":
-			var err error
-			var ptr1 string
-			if v != nil {
-				ptr1, err = graphql.UnmarshalID(v)
-				it.IDRarity = &ptr1
-			}
-
-			if err != nil {
-				return it, err
-			}
 		case "types":
 			var err error
-			var ptr1 string
+			var rawIf1 []interface{}
 			if v != nil {
-				ptr1, err = graphql.UnmarshalString(v)
-				it.Types = &ptr1
+				if tmp1, ok := v.([]interface{}); ok {
+					rawIf1 = tmp1
+				} else {
+					rawIf1 = []interface{}{v}
+				}
 			}
-
+			it.Types = make([]string, len(rawIf1))
+			for idx1 := range rawIf1 {
+				it.Types[idx1], err = graphql.UnmarshalString(rawIf1[idx1])
+			}
 			if err != nil {
 				return it, err
 			}
 		case "costs":
 			var err error
-			var ptr1 string
+			var rawIf1 []interface{}
 			if v != nil {
-				ptr1, err = graphql.UnmarshalString(v)
-				it.Costs = &ptr1
+				if tmp1, ok := v.([]interface{}); ok {
+					rawIf1 = tmp1
+				} else {
+					rawIf1 = []interface{}{v}
+				}
 			}
-
+			it.Costs = make([]string, len(rawIf1))
+			for idx1 := range rawIf1 {
+				it.Costs[idx1], err = graphql.UnmarshalString(rawIf1[idx1])
+			}
 			if err != nil {
 				return it, err
 			}
@@ -3790,7 +3584,6 @@ type Set {
   name:  String!
   alias: String!
   asset: Object!
-  cards: [Card!]
   createdAt: DateTime!
   updatedAt: DateTime
   deletedAt: DateTime
@@ -3799,8 +3592,6 @@ type Set {
 type Card {
   id: ID!
   name: String!
-  typesObject: Object!
-  costsObject: Object
   types: [String!]!
   costs: [String!]
   numberCost: Float!
@@ -3835,14 +3626,9 @@ input SetFilter {
 }
 
 input CardFilter {
-  id: ID
   name: String
-  typesObject: [String!]
-  costsObject: [String!]
-  idSets: [ID!]
-  idRarity: ID
-  types: String
-  costs: String
+  types: [String!]
+  costs: [String!]
   set: SetFilter
   rarity: RarityFilter
 }

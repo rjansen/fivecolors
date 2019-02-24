@@ -128,23 +128,9 @@ func TestSchema(test *testing.T) {
 					  id
 					  name
 					  alias
-					  cards {
-						id
-						name
-						types
-						costs
-						numberCost
-						idAsset
-						data
-						createdAt
-						updatedAt
-						deletedAt
-						rarity {
-						  id
-						  name
-						  alias
-						}
-					  }
+					  createdAt
+					  updatedAt
+					  deletedAt
 					}
 				}`,
 			},
@@ -193,8 +179,8 @@ func TestSchema(test *testing.T) {
 				Query: `{
 					cardBy(filter: {
 					  name: "mock_cardname"
-					  types: "mock_cardtype1 - mock_cardtype2"
-					  costs: "1BURW"
+					  types: ["mock_cardtype1" , "mock_cardtype2"]
+					  costs: ["1", "B", "U", "R" , "W"]
 					  set: {
 						name: "mock_setname"
 						alias: "mock_setalias"
@@ -257,23 +243,9 @@ func TestSchema(test *testing.T) {
 					  id
 					  name
 					  alias
-					  cards {
-						id
-						name
-						types
-						costs
-						numberCost
-						idAsset
-						data
-						createdAt
-						updatedAt
-						deletedAt
-						rarity {
-						  id
-						  name
-						  alias
-						}
-					  }
+				      createdAt
+					  updatedAt
+					  deletedAt
 					}
 				}`,
 			},

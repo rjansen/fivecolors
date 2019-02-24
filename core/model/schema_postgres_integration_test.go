@@ -156,23 +156,9 @@ func TestSchemaPostgres(test *testing.T) {
 					  id
 					  name
 					  alias
-					  cards {
-						id
-						name
-						types
-						costs
-						numberCost
-						idAsset
-						data
-						createdAt
-						updatedAt
-						deletedAt
-						rarity {
-						  id
-						  name
-						  alias
-						}
-					  }
+					  createdAt
+					  updatedAt
+					  deletedAt
 					}
 				}`,
 			},
@@ -266,8 +252,8 @@ func TestSchemaPostgres(test *testing.T) {
 				Query: `{
 					cardBy(filter: {
 					  name: "Card Mock"
-					  types: "Legendary"
-					  costs: "1"
+					  types: ["Legendary"]
+					  costs: ["1"]
 					  set: {
 						name: "Set Mock"
 						alias: "stm"
@@ -335,23 +321,9 @@ func TestSchemaPostgres(test *testing.T) {
 					  id
 					  name
 					  alias
-					  cards {
-						id
-						name
-						types
-						costs
-						numberCost
-						idAsset
-						data
-						createdAt
-						updatedAt
-						deletedAt
-						rarity {
-						  id
-						  name
-						  alias
-						}
-					  }
+					  createdAt
+					  updatedAt
+					  deletedAt
 					}
 				}`,
 			},

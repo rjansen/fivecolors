@@ -13,7 +13,6 @@ import (
 	"github.com/rjansen/l"
 	"github.com/rjansen/raizel/firestore"
 	"github.com/rjansen/yggdrasil"
-	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
@@ -47,13 +46,18 @@ func (scenario *testSchemaFirestore) setup(t *testing.T) {
 	schema := NewSchema(tree)
 	require.NotNil(t, schema, "new schema error")
 
-	for key, document := range scenario.mockSetup {
-		err := client.Doc(
-			fmt.Sprintf(testCollectionFmt, key),
-		).Set(
-			context.Background(), document,
-		)
-		assert.Nilf(t, err, "error setup mock data: key=%s document=%+v err=%+v", key, document, err)
+	if len(scenario.mockSetup) > 0 {
+		batch := client.Batch()
+		for key, document := range scenario.mockSetup {
+			batch.Set(
+				client.Doc(
+					fmt.Sprintf(testCollectionFmt, key),
+				),
+				document,
+			)
+		}
+		err := batch.Commit(context.Background())
+		require.Nilf(t, err, "error setup mock data: data=%s err=%+v", scenario.mockSetup, err)
 	}
 
 	collectionFmt = testCollectionFmt
@@ -64,16 +68,16 @@ func (scenario *testSchemaFirestore) setup(t *testing.T) {
 func (scenario *testSchemaFirestore) tearDown(t *testing.T) {
 	if scenario.tree != nil {
 		defer scenario.tree.Close()
-		var (
-			client = firestore.MustReference(scenario.tree)
-		)
-		for index, key := range scenario.mockTearDown {
-			err := client.Doc(
-				fmt.Sprintf(testCollectionFmt, key),
-			).Delete(
-				context.Background(),
+		if len(scenario.mockTearDown) > 0 {
+			var (
+				client = firestore.MustReference(scenario.tree)
+				batch  = client.Batch()
 			)
-			assert.Nilf(t, err, "error terdown mock data: index=%d key=%s err=%+v", index, key, err)
+			for _, key := range scenario.mockTearDown {
+				batch.Delete(client.Doc(fmt.Sprintf(testCollectionFmt, key)))
+			}
+			err := batch.Commit(context.Background())
+			require.Nilf(t, err, "error terdown mock data: data=%s err=%+v", scenario.mockSetup, err)
 		}
 	}
 }
@@ -102,6 +106,13 @@ func TestSchemaFirestore(test *testing.T) {
 					CreatedAt:  timeNow,
 					IDRarity:   "mock_rarityid",
 					IDSet:      "mock_setid",
+					Rarity: &Rarity{
+						ID: "mock_rarityid", Name: RarityNameMythicRare, Alias: RarityAliasM,
+					},
+					Set: &Set{
+						ID: "mock_setid", Name: "Set Mock", Alias: "stm",
+						CreatedAt: timeNow,
+					},
 				},
 			},
 			mockTearDown: []string{
@@ -119,6 +130,18 @@ func TestSchemaFirestore(test *testing.T) {
 					  costs
 					  numberCost
 				      idAsset
+					  idSet
+					  set{
+						id
+						name
+						alias
+					  }
+					  idRarity
+					  rarity{
+						id
+						name
+						alias
+					  }
 					  data
 					  createdAt
 					  updatedAt
@@ -147,23 +170,9 @@ func TestSchemaFirestore(test *testing.T) {
 					  id
 					  name
 					  alias
-					  cards {
-						id
-						name
-						types
-						costs
-						numberCost
-						idAsset
-						data
-						createdAt
-						updatedAt
-						deletedAt
-						rarity {
-						  id
-						  name
-						  alias
-						}
-					  }
+					  createdAt
+					  updatedAt
+					  deletedAt
 					}
 				}`,
 			},
@@ -179,46 +188,67 @@ func TestSchemaFirestore(test *testing.T) {
 					CreatedAt: timeNow,
 				},
 				"cards/mock_cardid1": Card{
-					ID:          "mock_cardid1",
-					IDExternal:  "mock_cardidexternal1",
-					IDAsset:     "mock_cardassetid1",
-					Name:        "Card Mock One",
-					TypesObject: Object{"0": "Legendary", "1": "Creature", "2": "Elf"},
-					CostsObject: &Object{"0": "1", "1": "G", "2": "G", "3": "G"},
-					NumberCost:  4.0,
-					CreatedAt:   timeNow,
-					IDRarity:    "mock_rarityid1",
-					IDSet:       "mock_setid1",
+					ID:         "mock_cardid1",
+					IDExternal: "mock_cardidexternal1",
+					IDAsset:    "mock_cardassetid1",
+					Name:       "Card Mock One",
+					Types:      []string{"Legendary", "Creature", "Elf"},
+					Costs:      []string{"1", "G", "G", "G"},
+					NumberCost: 4.0,
+					CreatedAt:  timeNow,
+					IDRarity:   "mock_rarityid1",
+					IDSet:      "mock_setid1",
+					Rarity: &Rarity{
+						ID: "mock_rarityid1", Name: RarityNameMythicRare, Alias: RarityAliasM,
+					},
+					Set: &Set{
+						ID: "mock_setid1", Name: "Set Mock", Alias: "stm",
+						CreatedAt: timeNow,
+					},
 				},
 				"cards/mock_cardid2": Card{
-					ID:          "mock_cardid2",
-					IDExternal:  "mock_cardidexternal2",
-					IDAsset:     "mock_cardassetid2",
-					Name:        "Card Mock Two",
-					TypesObject: Object{"0": "Legendary", "1": "Instant"},
-					CostsObject: &Object{"0": "1", "1": "B", "2": "B"},
-					NumberCost:  3.0,
-					CreatedAt:   timeNow,
-					IDRarity:    "mock_rarityid1",
-					IDSet:       "mock_setid1",
+					ID:         "mock_cardid2",
+					IDExternal: "mock_cardidexternal2",
+					IDAsset:    "mock_cardassetid2",
+					Name:       "Card Mock Two",
+					Types:      []string{"Legendary", "Instant"},
+					Costs:      []string{"1", "B", "B"},
+					NumberCost: 3.0,
+					CreatedAt:  timeNow,
+					IDRarity:   "mock_rarityid1",
+					IDSet:      "mock_setid1",
+					Rarity: &Rarity{
+						ID: "mock_rarityid1", Name: RarityNameMythicRare, Alias: RarityAliasM,
+					},
+					Set: &Set{
+						ID: "mock_setid1", Name: "Set Mock", Alias: "stm",
+						CreatedAt: timeNow,
+					},
 				},
 				"cards/mock_cardid3": Card{
-					ID:          "mock_cardid3",
-					IDExternal:  "mock_cardidexternal3",
-					IDAsset:     "mock_cardassetid3",
-					Name:        "Card Mock Three",
-					TypesObject: Object{"0": "Legendary", "1": "Creature", "2": "Goblin"},
-					CostsObject: &Object{"0": "1", "1": "R", "2": "R", "3": "R"},
-					NumberCost:  4.0,
-					CreatedAt:   timeNow,
-					IDRarity:    "mock_rarityid1",
-					IDSet:       "mock_setid1",
+					ID:         "mock_cardid3",
+					IDExternal: "mock_cardidexternal3",
+					IDAsset:    "mock_cardassetid3",
+					Name:       "Card Mock Three",
+					Types:      []string{"Legendary", "Creature", "Goblin"},
+					Costs:      []string{"1", "R", "R", "R"},
+					NumberCost: 4.0,
+					CreatedAt:  timeNow,
+					IDRarity:   "mock_rarityid1",
+					IDSet:      "mock_setid1",
+					Rarity: &Rarity{
+						ID: "mock_rarityid1", Name: RarityNameMythicRare, Alias: RarityAliasM,
+					},
+					Set: &Set{
+						ID: "mock_setid1", Name: "Set Mock", Alias: "stm",
+						CreatedAt: timeNow,
+					},
 				},
 			},
-			// mockTearDown: []string{
-			// 	"cards/mock_cardid1", "cards/mock_cardid2", "cards/mock_cardid3",
-			// 	"rarities/mock_rarityid1", "sets/mock_setid1",
-			// },
+			mockTearDown: []string{
+				"cards/mock_cardid1", "cards/mock_cardid2", "cards/mock_cardid3",
+				"rarities/mock_rarityid1", "sets/mock_setid1",
+			},
 			data: &struct {
 				Card []Card `json:"cardBy"`
 			}{},
@@ -226,17 +256,145 @@ func TestSchemaFirestore(test *testing.T) {
 				Query: `{
 					cardBy(filter: {
 					  name: "Card Mock"
-					  typesObject: ["Legendary", "Creature"]
-					  costsObject: ["1", "G"]
+					  types: ["Legendary", "Instant"]
+					  costs: ["1", "B", "B", "B"]
+					  set: {
+						id: "mock_setid1"
+						name: "Set Mock"
+						alias: "stm"
+					  }
+					  rarity: {
+						id: "mock_rarityid1"
+						name: MythicRare
+						alias: M
+					  }
 					}) {
 					  id
 					  name
-					  typesObject
-					  costsObject
+					  types
+					  costs
 					  numberCost
 					  idAsset
 					  idSet
+					  set{
+						id
+						name
+						alias
+					  }
 					  idRarity
+					  rarity{
+						id
+						name
+						alias
+					  }
+					  data
+					  createdAt
+					  updatedAt
+					  deletedAt
+					}
+				}`,
+			},
+		},
+		{
+			name: "Resolves cardBy field with another filter successfully",
+			mockSetup: map[string]interface{}{
+				"rarities/mock_rarityid1": Rarity{
+					ID: "mock_rarityid1", Name: RarityNameMythicRare, Alias: RarityAliasM,
+				},
+				"sets/mock_setid1": Set{
+					ID: "mock_setid1", Name: "Set Mock", Alias: "stm",
+					CreatedAt: timeNow,
+				},
+				"cards/mock_cardid1": Card{
+					ID:         "mock_cardid1",
+					IDExternal: "mock_cardidexternal1",
+					IDAsset:    "mock_cardassetid1",
+					Name:       "Card Mock One",
+					Types:      []string{"Legendary", "Creature", "Elf"},
+					Costs:      []string{"1", "G", "G", "G"},
+					NumberCost: 4.0,
+					CreatedAt:  timeNow,
+					IDRarity:   "mock_rarityid1",
+					IDSet:      "mock_setid1",
+					Rarity: &Rarity{
+						ID: "mock_rarityid1", Name: RarityNameMythicRare, Alias: RarityAliasM,
+					},
+					Set: &Set{
+						ID: "mock_setid1", Name: "Set Mock", Alias: "stm",
+						CreatedAt: timeNow,
+					},
+				},
+				"cards/mock_cardid2": Card{
+					ID:         "mock_cardid2",
+					IDExternal: "mock_cardidexternal2",
+					IDAsset:    "mock_cardassetid2",
+					Name:       "Card Mock Two",
+					Types:      []string{"Legendary", "Instant"},
+					Costs:      []string{"1", "B", "B"},
+					NumberCost: 3.0,
+					CreatedAt:  timeNow,
+					IDRarity:   "mock_rarityid1",
+					IDSet:      "mock_setid1",
+					Rarity: &Rarity{
+						ID: "mock_rarityid1", Name: RarityNameMythicRare, Alias: RarityAliasM,
+					},
+					Set: &Set{
+						ID: "mock_setid1", Name: "Set Mock", Alias: "stm",
+						CreatedAt: timeNow,
+					},
+				},
+				"cards/mock_cardid3": Card{
+					ID:         "mock_cardid3",
+					IDExternal: "mock_cardidexternal3",
+					IDAsset:    "mock_cardassetid3",
+					Name:       "Card Mock Three",
+					Types:      []string{"Legendary", "Creature", "Goblin"},
+					Costs:      []string{"1", "R", "R", "R"},
+					NumberCost: 4.0,
+					CreatedAt:  timeNow,
+					IDRarity:   "mock_rarityid1",
+					IDSet:      "mock_setid1",
+					Rarity: &Rarity{
+						ID: "mock_rarityid1", Name: RarityNameMythicRare, Alias: RarityAliasM,
+					},
+					Set: &Set{
+						ID: "mock_setid1", Name: "Set Mock", Alias: "stm",
+						CreatedAt: timeNow,
+					},
+				},
+			},
+			mockTearDown: []string{
+				"cards/mock_cardid1", "cards/mock_cardid2", "cards/mock_cardid3",
+				"rarities/mock_rarityid1", "sets/mock_setid1",
+			},
+			data: &struct {
+				Card []Card `json:"cardBy"`
+			}{},
+			request: graphql.Request{
+				Query: `{
+					cardBy(filter: {
+					  name: "Card Mock"
+					  types: ["Legendary", "Instant"]
+					  costs: ["1", "B", "B"]
+					}) {
+					  id
+					  name
+					  types
+					  costs
+					  numberCost
+					  idAsset
+					  idSet
+					  set{
+						id
+						name
+						alias
+					  }
+					  idRarity
+					  rarity{
+						id
+						name
+						alias
+					  }
 					  data
 					  createdAt
 					  updatedAt
@@ -248,55 +406,45 @@ func TestSchemaFirestore(test *testing.T) {
 		/*
 			{
 				name: "Resolves setBy field successfully",
-				mockSetup: []dataGenerator{
-					{
-						sql:       "insert into set (id, name, alias, created_at) values ($1, $2, $3, $4)",
-						arguments: []interface{}{"mock_setid1", "Set Mock One", "stm1", timeNow},
+				mockSetup: map[string]interface{}{
+					"sets/mock_setid1": Set{
+						ID: "mock_setid1", Name: "Set Mocki One", Alias: "stm1",
+						CreatedAt: timeNow,
 					},
-					{
-						sql:       "insert into set (id, name, alias, created_at) values ($1, $2, $3, $4)",
-						arguments: []interface{}{"mock_setid2", "Set Mock Two", "stm2", timeNow},
+					"sets/mock_setid2": Set{
+						ID: "mock_setid2", Name: "Set Mock Two", Alias: "stm2",
+						CreatedAt: timeNow,
 					},
-					{
-						sql:       "insert into set (id, name, alias, created_at) values ($1, $2, $3, $4)",
-						arguments: []interface{}{"mock_setid3", "Set Mock Three", "stm3", timeNow},
+					"sets/mock_setid3": Set{
+						ID: "mock_setid3", Name: "Set Mock Three", Alias: "stm3",
+						CreatedAt: timeNow,
+					},
+					"sets/mock_setid4": Set{
+						ID: "mock_setid4", Name: "Set Mock Four", Alias: "stm4",
+						CreatedAt: timeNow,
 					},
 				},
-				mockTearDown: []dataGenerator{
-					{sql: "delete from set where id = $1", arguments: []interface{}{"mock_setid1"}},
-					{sql: "delete from set where id = $1", arguments: []interface{}{"mock_setid2"}},
-					{sql: "delete from set where id = $1", arguments: []interface{}{"mock_setid3"}},
+				mockTearDown: []string{
+					"sets/mock_setid1",
+					"sets/mock_setid2",
+					"sets/mock_setid3",
+					"sets/mock_setid4",
 				},
-
 				data: &struct {
-					Set []Set `json:"setBy"`
+					Set Set `json:"set"`
 				}{},
 				request: graphql.Request{
 					Query: `{
 						setBy(filter: {
 						  name: "Set Mock"
-						  alias: "stm"
+						  alias: "stm4"
 						}) {
 						  id
 						  name
 						  alias
-						  cards {
-							id
-							name
-							types
-							costs
-							numberCost
-							idAsset
-							data
-							createdAt
-							updatedAt
-							deletedAt
-							rarity {
-							  id
-							  name
-							  alias
-							}
-						  }
+						  createdAt
+						  updatedAt
+						  deletedAt
 						}
 					}`,
 				},
@@ -318,7 +466,6 @@ func TestSchemaFirestore(test *testing.T) {
 				t.Logf("%s", response.Data)
 				err := json.Unmarshal(response.Data, scenario.data)
 				require.Nil(t, err, "schema response unmarshal error")
-				require.NotZerof(t, scenario.data, "data response invalid: %+v", scenario.data)
 				require.NotEmpty(t, scenario.data, "data response len invalid: %+v", scenario.data)
 			},
 		)

@@ -96,11 +96,11 @@ func (r *queryResolver) CardBy(ctx context.Context, filter CardFilter) ([]Card, 
 	}
 	if filter.Types != nil {
 		w = append(w, fmt.Sprintf("exists (select 1 from unnest(types) as type where type ~* $%d)", len(a)+1))
-		a = append(a, *filter.Types)
+		a = append(a, pq.Array(filter.Types))
 	}
 	if filter.Costs != nil {
 		w = append(w, fmt.Sprintf("array_to_string(costs, '') ~* $%d", len(a)+1))
-		a = append(a, *filter.Costs)
+		a = append(a, pq.Array(filter.Costs))
 	}
 	if filter.Set != nil {
 		var (
