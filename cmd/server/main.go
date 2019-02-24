@@ -16,6 +16,7 @@ import (
 	"github.com/rjansen/fivecolors/core/model"
 	"github.com/rjansen/l"
 	"github.com/rjansen/migi"
+	"github.com/rjansen/raizel/firestore"
 	"github.com/rjansen/raizel/sql"
 	"github.com/rjansen/yggdrasil"
 )
@@ -26,6 +27,7 @@ var (
 
 type options struct {
 	bindAddress string
+	projectID   string
 	driver      string
 	dsn         string
 }
@@ -37,6 +39,9 @@ func newOptions() options {
 	)
 	env.StringVar(
 		&options.bindAddress, "server_bindaddress", ":8080", "Server bind address, ip:port",
+	)
+	env.StringVar(
+		&options.projectID, "project_id", "project-id", "GCP project identifier",
 	)
 	env.StringVar(
 		&options.driver, "raizel_driver", "postgres", "Raizel database driver",
@@ -62,6 +67,39 @@ func newTree(options options) yggdrasil.Tree {
 	if err != nil {
 		panic(err)
 	}
+
+	err = graphql.Register(&roots, newSchema(&roots, options))
+	if err != nil {
+		panic(err)
+	}
+	return roots.NewTreeDefault()
+}
+
+func newSchema(roots *yggdrasil.Roots, options options) graphql.Schema {
+	client := newFirestoreClient(options)
+	errClient := firestore.Register(roots, client)
+	if errClient != nil {
+		panic(errClient)
+	}
+	// db := newSqlDB(options)
+	// errDB := sql.Register(&roots, db)
+	// if errDB != nil {
+	// 	panic(errDB)
+	// }
+	return model.NewSchema(
+		model.NewResolver(
+			model.NewFirestoreQueryResolver(
+				roots.NewTreeDefault(),
+			),
+		),
+	)
+}
+
+func newFirestoreClient(options options) firestore.Client {
+	return firestore.NewClient(options.projectID)
+}
+
+func newSqlDB(options options) sql.DB {
 	sqlDB, err := stdsql.Open(options.driver, options.dsn)
 	if err != nil {
 		panic(err)
@@ -70,15 +108,7 @@ func newTree(options options) yggdrasil.Tree {
 	if err != nil {
 		panic(err)
 	}
-	err = sql.Register(&roots, db)
-	if err != nil {
-		panic(err)
-	}
-	err = graphql.Register(&roots, model.NewSchema(roots.NewTreeDefault()))
-	if err != nil {
-		panic(err)
-	}
-	return roots.NewTreeDefault()
+	return db
 }
 
 func httpRouterHandler(handler http.HandlerFunc) func(http.ResponseWriter, *http.Request, httprouter.Params) {
