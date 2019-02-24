@@ -362,9 +362,28 @@ func TestSchemaFirestore(test *testing.T) {
 						CreatedAt: timeNow,
 					},
 				},
+				"cards/mock_cardid4": Card{
+					ID:         "mock_cardid4",
+					IDExternal: "mock_cardidexternal4",
+					IDAsset:    "mock_cardassetid4",
+					Name:       "Card Mock Four",
+					Types:      []string{"Legendary", "Instant"},
+					Costs:      []string{"1", "B", "B"},
+					NumberCost: 3.0,
+					CreatedAt:  timeNow,
+					IDRarity:   "mock_rarityid1",
+					IDSet:      "mock_setid1",
+					Rarity: &Rarity{
+						ID: "mock_rarityid1", Name: RarityNameMythicRare, Alias: RarityAliasM,
+					},
+					Set: &Set{
+						ID: "mock_setid1", Name: "Set Mock", Alias: "stm",
+						CreatedAt: timeNow,
+					},
+				},
 			},
 			mockTearDown: []string{
-				"cards/mock_cardid1", "cards/mock_cardid2", "cards/mock_cardid3",
+				"cards/mock_cardid1", "cards/mock_cardid2", "cards/mock_cardid3", "cards/mock_cardid4",
 				"rarities/mock_rarityid1", "sets/mock_setid1",
 			},
 			data: &struct {
@@ -403,53 +422,51 @@ func TestSchemaFirestore(test *testing.T) {
 				}`,
 			},
 		},
-		/*
-			{
-				name: "Resolves setBy field successfully",
-				mockSetup: map[string]interface{}{
-					"sets/mock_setid1": Set{
-						ID: "mock_setid1", Name: "Set Mocki One", Alias: "stm1",
-						CreatedAt: timeNow,
-					},
-					"sets/mock_setid2": Set{
-						ID: "mock_setid2", Name: "Set Mock Two", Alias: "stm2",
-						CreatedAt: timeNow,
-					},
-					"sets/mock_setid3": Set{
-						ID: "mock_setid3", Name: "Set Mock Three", Alias: "stm3",
-						CreatedAt: timeNow,
-					},
-					"sets/mock_setid4": Set{
-						ID: "mock_setid4", Name: "Set Mock Four", Alias: "stm4",
-						CreatedAt: timeNow,
-					},
+		{
+			name: "Resolves setBy field successfully",
+			mockSetup: map[string]interface{}{
+				"sets/mock_setid1": Set{
+					ID: "mock_setid1", Name: "Set Mocki One", Alias: "stm1",
+					CreatedAt: timeNow,
 				},
-				mockTearDown: []string{
-					"sets/mock_setid1",
-					"sets/mock_setid2",
-					"sets/mock_setid3",
-					"sets/mock_setid4",
+				"sets/mock_setid2": Set{
+					ID: "mock_setid2", Name: "Set Mock Two", Alias: "stm2",
+					CreatedAt: timeNow,
 				},
-				data: &struct {
-					Set Set `json:"set"`
-				}{},
-				request: graphql.Request{
-					Query: `{
-						setBy(filter: {
-						  name: "Set Mock"
-						  alias: "stm4"
-						}) {
-						  id
-						  name
-						  alias
-						  createdAt
-						  updatedAt
-						  deletedAt
-						}
-					}`,
+				"sets/mock_setid3": Set{
+					ID: "mock_setid3", Name: "Set Mock Three", Alias: "stm",
+					CreatedAt: timeNow,
+				},
+				"sets/mock_setid4": Set{
+					ID: "mock_setid4", Name: "Set Mock Four", Alias: "stm",
+					CreatedAt: timeNow,
 				},
 			},
-		*/
+			mockTearDown: []string{
+				"sets/mock_setid1",
+				"sets/mock_setid2",
+				"sets/mock_setid3",
+				"sets/mock_setid4",
+			},
+			data: &struct {
+				Set []Set `json:"setBy"`
+			}{},
+			request: graphql.Request{
+				Query: `{
+					setBy(filter: {
+					  name: "Set Mock"
+					  alias: "stm"
+					}) {
+					  id
+					  name
+					  alias
+					  createdAt
+					  updatedAt
+					  deletedAt
+					}
+				}`,
+			},
+		},
 	}
 
 	for index, scenario := range scenarios {

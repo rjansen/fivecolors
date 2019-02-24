@@ -5,7 +5,6 @@ package model
 import (
 	"context"
 	"fmt"
-	"time"
 
 	"github.com/rjansen/l"
 	"github.com/rjansen/raizel/firestore"
@@ -146,25 +145,40 @@ func (r *queryResolver) Set(ctx context.Context, id string) (Set, error) {
 
 func (r *queryResolver) SetBy(ctx context.Context, filter SetFilter) ([]Set, error) {
 	var (
-		logger = l.MustReference(r.tree)
-		sets   []Set
-		err    error
+		client    = firestore.MustReference(r.tree)
+		logger    = l.MustReference(r.tree)
+		setsRef   = fmt.Sprintf(collectionFmt, "sets")
+		sets      []Set
+		setsQuery firestore.Query = client.Collection(setsRef)
 	)
-
 	logger.Info("resolve.setby.firestore", l.NewValue("arguments", filter))
 
-	sets = []Set{
-		{
-			ID:    "",
-			Name:  "",
-			Alias: "",
-			Asset: map[string]interface{}{
-				"": nil,
-			},
-			CreatedAt: time.Time{},
-			UpdatedAt: &time.Time{},
-			DeletedAt: &time.Time{},
-		},
+	if filter.Name != nil {
+		setsQuery = setsQuery.Where("Name", ">=", *filter.Name)
+	}
+	if filter.Alias != nil {
+		setsQuery = setsQuery.Where("Alias", "==", *filter.Alias)
+	}
+	setsQuery = setsQuery.OrderBy("Name", firestore.Asc)
+
+	logger.Info("resolve.setdby.firestore.query", l.NewValue("query", setsQuery))
+	documents, err := setsQuery.Documents(ctx).GetAll()
+	if err != nil {
+		logger.Error("resolve.setby.firestore.query_err", l.NewValue("error", err))
+		return sets, err
+	}
+	for index, document := range documents {
+		var set Set
+		err := document.DataTo(&set)
+		if err != nil {
+			logger.Error(
+				"resolve.setby.firestore.fetch_err",
+				l.NewValue("index", index),
+				l.NewValue("error", err),
+			)
+			return sets, err
+		}
+		sets = append(sets, set)
 	}
 
 	logger.Info("resolve.setby.firestore.fetched", l.NewValue("sets.len", len(sets)))
