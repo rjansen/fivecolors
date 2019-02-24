@@ -1,5 +1,3 @@
-// +build firestore
-
 package model
 
 import (
@@ -15,23 +13,17 @@ var (
 	collectionFmt = "environments/development/%s"
 )
 
-type Resolver struct {
+type firestoreQueryResolver struct {
 	tree yggdrasil.Tree
 }
 
-func NewResolver(tree yggdrasil.Tree) *Resolver {
-	return &Resolver{
+func NewFirestoreQueryResolver(tree yggdrasil.Tree) QueryResolver {
+	return &firestoreQueryResolver{
 		tree: tree,
 	}
 }
 
-func (r *Resolver) Query() QueryResolver {
-	return &queryResolver{Resolver: r}
-}
-
-type queryResolver struct{ *Resolver }
-
-func (r *queryResolver) Card(ctx context.Context, id string) (Card, error) {
+func (r *firestoreQueryResolver) Card(ctx context.Context, id string) (Card, error) {
 	var (
 		client  = firestore.MustReference(r.tree)
 		logger  = l.MustReference(r.tree)
@@ -54,7 +46,7 @@ func (r *queryResolver) Card(ctx context.Context, id string) (Card, error) {
 	return card, err
 }
 
-func (r *queryResolver) CardBy(ctx context.Context, filter CardFilter) ([]Card, error) {
+func (r *firestoreQueryResolver) CardBy(ctx context.Context, filter CardFilter) ([]Card, error) {
 	var (
 		client     = firestore.MustReference(r.tree)
 		logger     = l.MustReference(r.tree)
@@ -120,7 +112,7 @@ func (r *queryResolver) CardBy(ctx context.Context, filter CardFilter) ([]Card, 
 	return cards, err
 }
 
-func (r *queryResolver) Set(ctx context.Context, id string) (Set, error) {
+func (r *firestoreQueryResolver) Set(ctx context.Context, id string) (Set, error) {
 	var (
 		client = firestore.MustReference(r.tree)
 		logger = l.MustReference(r.tree)
@@ -143,7 +135,7 @@ func (r *queryResolver) Set(ctx context.Context, id string) (Set, error) {
 	return set, err
 }
 
-func (r *queryResolver) SetBy(ctx context.Context, filter SetFilter) ([]Set, error) {
+func (r *firestoreQueryResolver) SetBy(ctx context.Context, filter SetFilter) ([]Set, error) {
 	var (
 		client    = firestore.MustReference(r.tree)
 		logger    = l.MustReference(r.tree)

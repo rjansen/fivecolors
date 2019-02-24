@@ -1,5 +1,3 @@
-// +build integration,!firestore
-
 package model
 
 import (
@@ -49,8 +47,14 @@ func (scenario *testSchemaPostgres) setup(t *testing.T) {
 	require.Nil(t, errDB, "new db error")
 	require.Nil(t, errRegisterDB, "setup db error")
 
-	tree := roots.NewTreeDefault()
-	schema := NewSchema(tree)
+	var (
+		tree   = roots.NewTreeDefault()
+		schema = NewSchema(
+			NewResolver(
+				NewPostgresQueryResolver(tree),
+			),
+		)
+	)
 	require.NotNil(t, schema, "new schema error")
 
 	for index, dataGen := range scenario.mockSetup {

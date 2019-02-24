@@ -1,5 +1,3 @@
-// +build integration,firestore
-
 package model
 
 import (
@@ -42,8 +40,14 @@ func (scenario *testSchemaFirestore) setup(t *testing.T) {
 	require.Nil(t, errLogger, "setup logger error")
 	require.Nil(t, errClient, "setup client error")
 
-	tree := roots.NewTreeDefault()
-	schema := NewSchema(tree)
+	var (
+		tree   = roots.NewTreeDefault()
+		schema = NewSchema(
+			NewResolver(
+				NewFirestoreQueryResolver(tree),
+			),
+		)
+	)
 	require.NotNil(t, schema, "new schema error")
 
 	if len(scenario.mockSetup) > 0 {
