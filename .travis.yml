@@ -9,6 +9,10 @@ cache:
 
 go:
     - 1.11.x
+env:
+    - MODULE=core
+    - MODULE=function
+    - MODULE=cmd/server
 
 install: sudo make setup module.setup postgres.setup clean
 
