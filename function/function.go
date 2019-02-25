@@ -37,7 +37,7 @@ func newOptions() options {
 		&options.projectID, "project_id", "project-id", "GCP project identifier",
 	)
 	env.StringVar(
-		&options.dataStore, "data_store", "postgres", "Persistence data store",
+		&options.dataStore, "data_store", "firestore", "Persistence data store",
 	)
 	env.StringVar(
 		&options.driver, "raizel_driver", "postgres", "Raizel database driver",
