@@ -67,7 +67,8 @@ debug:
 .PHONY: debugtest
 debugtest:
 	@echo "$(REPO)@$(BUILD) debugtest"
-	cd $(MODULE_DIR) && dlv test $(DEBUG_PKG) --build-flags="-tags 'integration'" -- -test.run $(TESTS)
+	cd $(MODULE_DIR) && dlv test $(DEBUG_PKG) \
+		--build-flags="-ldflags '-X $(ITEST_ROOT_DOC)' -tags 'integration'" -- -test.run $(TESTS)
 
 .PHONY: vet
 vet:
@@ -82,20 +83,22 @@ test:
 .PHONY: itest
 itest:
 	@echo "$(REPO)@$(BUILD) itest"
-	cd $(MODULE_DIR) && $(GOTESTSUM) -f $(TEST_VERBOSITY) -- -tags="integration" -v -race -run $(TESTS) $(TEST_PKGS)
+	cd $(MODULE_DIR) && $(GOTESTSUM) -f $(TEST_VERBOSITY) -- -ldflags '-X $(ITEST_ROOT_DOC)' -tags="integration" \
+		-v -race -run $(TESTS) $(TEST_PKGS)
 
 .PHONY: bench
 bench:
 	@echo "$(REPO)@$(BUILD) bench"
-	cd $(MODULE_DIR) && $(GOTESTSUM) -f $(TEST_VERBOSITY) -- -bench=. -run="^$$" -benchmem $(TEST_PKGS)
+	cd $(MODULE_DIR) && $(GOTESTSUM) -f $(TEST_VERBOSITY) -- -ldflags '-X $(ITEST_ROOT_DOC)' \
+		-bench=. -run="^$$" -benchmem $(TEST_PKGS)
 
 .PHONY: coverage
 coverage: $(TMP_DIR)
 	@echo "$(REPO)@$(BUILD) coverage"
 	ls -ld $(TMP_DIR)
 	@touch $(COVERAGE_FILE)
-	cd $(MODULE_DIR) && $(GOTESTSUM) -f $(TEST_VERBOSITY) -- -tags="integration" -v -run $(TESTS) \
-			  -covermode=atomic -coverpkg=$(PKGS) -coverprofile=$(COVERAGE_FILE) $(TEST_PKGS)
+	cd $(MODULE_DIR) && $(GOTESTSUM) -f $(TEST_VERBOSITY) -- -ldflags '-X $(ITEST_ROOT_DOC)' -tags="integration" \
+		-v -run $(TESTS) -covermode=atomic -coverpkg=$(PKGS) -coverprofile=$(COVERAGE_FILE) $(TEST_PKGS)
 
 .PHONY: coverage.text
 coverage.text: coverage

@@ -24,7 +24,7 @@ type dataGenerator struct {
 	arguments []interface{}
 }
 
-type testPostgresHandler struct {
+type testPostgresIntegrationHandler struct {
 	name           string
 	tree           yggdrasil.Tree
 	mockSetup      []dataGenerator
@@ -36,9 +36,15 @@ type testPostgresHandler struct {
 	responseStatus int
 }
 
-func (scenario *testPostgresHandler) setup(t *testing.T) {
+func (scenario *testPostgresIntegrationHandler) setup(t *testing.T) {
 	var (
-		tree = newTree()
+		options = options{
+			projectID: "project-id",
+			dataStore: "postgres",
+			driver:    "postgres",
+			dsn:       "postgres://postgres:@127.0.0.1:5432/postgres?sslmode=disable",
+		}
+		tree = newTree(options)
 		db   = sql.MustReference(tree)
 	)
 	require.NotNil(t, tree, "tree invalid instance")
@@ -60,7 +66,7 @@ func (scenario *testPostgresHandler) setup(t *testing.T) {
 	scenario.response = httptest.NewRecorder()
 }
 
-func (scenario *testPostgresHandler) tearDown(t *testing.T) {
+func (scenario *testPostgresIntegrationHandler) tearDown(t *testing.T) {
 	if scenario.tree != nil {
 		defer scenario.tree.Close()
 		var (
@@ -73,9 +79,9 @@ func (scenario *testPostgresHandler) tearDown(t *testing.T) {
 	}
 }
 
-func TestPostgresHandler(test *testing.T) {
+func TestPostgresIntegrationHandler(test *testing.T) {
 	timeNow := time.Now().UTC()
-	scenarios := []testPostgresHandler{
+	scenarios := []testPostgresIntegrationHandler{
 		{
 			name:           "When request body is invalid returns a bad request",
 			body:           "<xml><id>xmlid</id></name>Invalid Body</name></xml>",

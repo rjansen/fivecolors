@@ -2,6 +2,7 @@ package function
 
 import (
 	stdsql "database/sql"
+	"fmt"
 	"net/http"
 	"sync"
 
@@ -10,6 +11,7 @@ import (
 	"github.com/rjansen/fivecolors/core/model"
 	"github.com/rjansen/l"
 	"github.com/rjansen/migi"
+	"github.com/rjansen/raizel/firestore"
 	"github.com/rjansen/raizel/sql"
 	"github.com/rjansen/yggdrasil"
 )
@@ -20,14 +22,22 @@ var (
 )
 
 type options struct {
-	driver string
-	dsn    string
+	projectID string
+	dataStore string
+	driver    string
+	dsn       string
 }
 
 func newOptions() options {
 	var (
 		env     = migi.NewOptions(migi.NewEnvironmentSource())
 		options options
+	)
+	env.StringVar(
+		&options.projectID, "project_id", "project-id", "GCP project identifier",
+	)
+	env.StringVar(
+		&options.dataStore, "data_store", "postgres", "Persistence data store",
 	)
 	env.StringVar(
 		&options.driver, "raizel_driver", "postgres", "Raizel database driver",
@@ -42,18 +52,59 @@ func newOptions() options {
 	return options
 }
 
-func newTree() yggdrasil.Tree {
+func newTree(options options) yggdrasil.Tree {
 	var (
-		options = newOptions()
-		logger  = l.NewZapLoggerDefault()
-		roots   = yggdrasil.NewRoots()
-		err     error
+		logger = l.NewZapLoggerDefault()
+		roots  = yggdrasil.NewRoots()
+		err    error
 	)
 
 	err = l.Register(&roots, logger)
 	if err != nil {
 		panic(err)
 	}
+
+	err = graphql.Register(&roots, newSchema(&roots, options))
+	if err != nil {
+		panic(err)
+	}
+	return roots.NewTreeDefault()
+}
+
+func newSchema(roots *yggdrasil.Roots, options options) graphql.Schema {
+	var queryResolver model.QueryResolver
+	switch options.dataStore {
+	case "firestore":
+		err := firestore.Register(roots, newFirestoreClient(options))
+		if err != nil {
+			panic(err)
+		}
+		queryResolver = model.NewFirestoreQueryResolver(
+			roots.NewTreeDefault(),
+		)
+	case "postgres":
+		err := sql.Register(roots, newSqlDB(options))
+		if err != nil {
+			panic(err)
+		}
+		queryResolver = model.NewPostgresQueryResolver(
+			roots.NewTreeDefault(),
+		)
+	default:
+		panic(
+			fmt.Sprintf("invalid_datastore: datastore=%s valid_values=[sql,firestore]", options.dataStore),
+		)
+	}
+	return model.NewSchema(
+		model.NewResolver(queryResolver),
+	)
+}
+
+func newFirestoreClient(options options) firestore.Client {
+	return firestore.NewClient(options.projectID)
+}
+
+func newSqlDB(options options) sql.DB {
 	sqlDB, err := stdsql.Open(options.driver, options.dsn)
 	if err != nil {
 		panic(err)
@@ -62,22 +113,16 @@ func newTree() yggdrasil.Tree {
 	if err != nil {
 		panic(err)
 	}
-	err = sql.Register(&roots, db)
-	if err != nil {
-		panic(err)
-	}
-	err = graphql.Register(&roots, model.NewSchema(roots.NewTreeDefault()))
-	if err != nil {
-		panic(err)
-	}
-	return roots.NewTreeDefault()
+	return db
 }
 
 func Handler(w http.ResponseWriter, r *http.Request) {
 	once.Do(
 		func() {
 			if serverHandler == nil {
-				serverHandler = api.NewGraphQLHandler(newTree())
+				serverHandler = api.NewGraphQLHandler(
+					newTree(newOptions()),
+				)
 			}
 		},
 	)

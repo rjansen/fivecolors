@@ -19,7 +19,7 @@ import (
 	sqlmock "gopkg.in/DATA-DOG/go-sqlmock.v1"
 )
 
-type testHandler struct {
+type testPostgresHandler struct {
 	name           string
 	tree           yggdrasil.Tree
 	dbMock         sqlmock.Sqlmock
@@ -33,7 +33,7 @@ type testHandler struct {
 	responseStatus int
 }
 
-func (scenario *testHandler) setup(t *testing.T) {
+func (scenario *testPostgresHandler) setup(t *testing.T) {
 	var (
 		roots                   = yggdrasil.NewRoots()
 		errLogger               = l.Register(&roots, l.NewZapLoggerDefault())
@@ -46,7 +46,15 @@ func (scenario *testHandler) setup(t *testing.T) {
 	require.Nil(t, errDB, "new db error")
 	require.Nil(t, errRegisterDB, "setup db error")
 
-	errSchema := graphql.Register(&roots, model.NewSchema(roots.NewTreeDefault()))
+	errSchema := graphql.Register(&roots,
+		model.NewSchema(
+			model.NewResolver(
+				model.NewPostgresQueryResolver(
+					roots.NewTreeDefault(),
+				),
+			),
+		),
+	)
 	require.Nil(t, errSchema, "new schema error")
 	tree := roots.NewTreeDefault()
 
@@ -75,14 +83,14 @@ func (scenario *testHandler) setup(t *testing.T) {
 	scenario.response = httptest.NewRecorder()
 }
 
-func (scenario *testHandler) tearDown(*testing.T) {
+func (scenario *testPostgresHandler) tearDown(*testing.T) {
 	if scenario.tree != nil {
 		scenario.tree.Close()
 	}
 }
 
-func TestHandler(test *testing.T) {
-	scenarios := []testHandler{
+func TestPostgresHandler(test *testing.T) {
+	scenarios := []testPostgresHandler{
 		{
 			name:           "When request body is invalid returns a bad request",
 			body:           "<xml><id>xmlid</id></name>Invalid Body</name></xml>",
