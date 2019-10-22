@@ -12,3 +12,5 @@ require (
 	github.com/vektah/gqlparser v1.1.1
 	gopkg.in/DATA-DOG/go-sqlmock.v1 v1.3.0
 )
+
+go 1.13
