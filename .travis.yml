@@ -8,23 +8,26 @@ cache:
     - ./tmp/deps
 
 go:
-    - 1.11.x
+#   - 1.11.x
+    - 1.13.x
 env:
     - MODULE=core
     - MODULE=function
     - MODULE=cmd/server
 
-install: sudo make setup module.setup postgres.setup clean
+# install: sudo make setup module.setup postgres.setup clean
+install: sudo make -f Makefile.scripts codecov.install gotestsum.install
 
 before_script:
     - sudo /etc/init.d/postgresql stop
-    - make postgres.migrations.run firestore.decodekeycontent
+#    - make postgres.migrations.run firestore.decodekeycontent
+    - make -f Makefile.scripts postgres.start firestore.start postgres.scripts
 
-script: make ci
+script: make -f Makefile.scripts ci
 
-after_script: make postgres.kill
+# after_script: make postgres.kill firestore.kill
 
-after_success: make coverage.push
+after_success: make -f Makefile.scripts codecov.push
 
 notifications:
     email:
