@@ -5,15 +5,15 @@ cache:
   directories:
     - $HOME/.cache/go-build
     - $HOME/gopath/pkg/mod
-    - ./tmp
+    - $HOME/tmp
 
 go:
 #   - 1.11.x
     - 1.13.x
 env:
-    - OS=linux ARCH=amd64 TMP_DIR=./tmp MODULE=core
-    - OS=linux ARCH=amd64 TMP_DIR=./tmp MODULE=function
-    - OS=linux ARCH=amd64 TMP_DIR=./tmp MODULE=cmd/server
+    - OS=linux ARCH=amd64 TMP_DIR=$HOME/tmp MODULE=core
+    - OS=linux ARCH=amd64 TMP_DIR=$HOME/tmp MODULE=function
+    - OS=linux ARCH=amd64 TMP_DIR=$HOME/tmp MODULE=cmd/server
 
 # install: sudo make setup module.setup postgres.setup clean
 install: sudo make -f Makefile.scripts codecov.install gotestsum.install
