@@ -2,3 +2,6 @@
 *.log
 #/vendor/*/
 /fivecolors
+/var
+tmp
+vendor
