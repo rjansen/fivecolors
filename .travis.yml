@@ -8,26 +8,23 @@ cache:
     - $HOME/tmp
 
 go:
-#   - 1.11.x
     - 1.13.x
 env:
     - OS=linux ARCH=amd64 TMP_DIR=$HOME/tmp MODULE=core
     - OS=linux ARCH=amd64 TMP_DIR=$HOME/tmp MODULE=function
     - OS=linux ARCH=amd64 TMP_DIR=$HOME/tmp MODULE=cmd/server
 
-# install: sudo make setup module.setup postgres.setup clean
-install: sudo make -f Makefile.scripts codecov.install gotestsum.install
+install: sudo make codecov.install gotestsum.install
 
 before_script:
     - sudo /etc/init.d/postgresql stop
-#    - make postgres.migrations.run firestore.decodekeycontent
-    - make -f Makefile.scripts postgres.start firestore.start postgres.scripts
+    - make postgres.start firestore.start postgres.scripts
 
-script: make -f Makefile.scripts ci
+script: make ci
 
 # after_script: make postgres.kill firestore.kill
 
-after_success: make -f Makefile.scripts codecov.push
+after_success: make codecov.push
 
 notifications:
     email:
