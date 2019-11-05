@@ -1,0 +1,54 @@
+type RarityInput {
+  id: ID!
+  name: RarityName!
+  alias: RarityAlias!
+}
+
+input SetInput {
+  id:    ID!
+  name:  String!
+  alias: String!
+  asset: Map!
+  cardsCount: Int!
+}
+
+input CardInput {
+  id: ID!
+  name: String!
+  types: [String!]!
+  costs: [String!]
+  numberCost: Float!
+  idExternal: String!
+  orderExternal: String
+  idRarity: String!
+  rarity: RarityInput
+  idSet: String!
+  set: SetInput
+  idAsset: String!
+  rules: [String!]
+  rate: Float
+  rateVotes: Int
+  artist: String
+  flavor: String
+  data: Map
+}
+
+input RarityFilter {
+  id: ID
+  name: RarityName
+  alias: RarityAlias
+}
+
+input SetFilter {
+  id: ID
+  name: String
+  alias: String
+}
+
+input CardFilter {
+  name: String
+  types: [String!]
+  costs: [String!]
+  set: SetFilter
+  rarity: RarityFilter
+}
