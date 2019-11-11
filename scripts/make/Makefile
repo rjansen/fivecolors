@@ -3,7 +3,8 @@ OS        	          ?= darwin
 ARCH                  ?= amd64
 include scripts/make/go/gotestsum/Makefile
 include scripts/make/go/lint/Makefile
-include scripts/make//go/module/Makefile
+include scripts/make/go/gqlgen/Makefile
+include scripts/make/go/module/Makefile
 CODECOV_COVERAGE_FILE ?= $(GO_COVERAGE_FILE)
 include scripts/make/codecov/Makefile
 export FIRESTORE_EMULATOR_HOST ?= $(FIRESTORE_HOST):$(FIRESTORE_PORT)
