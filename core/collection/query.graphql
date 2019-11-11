@@ -1,6 +1,0 @@
-type Query {
-  set(id: ID!): Set!
-  card(id: ID!): Card!
-  setBy(filter: SetFilter!): [Set!]!
-  cardBy(filter: CardFilter!): [Card!]!
-}
