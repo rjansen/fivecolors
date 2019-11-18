@@ -14,6 +14,7 @@ include scripts/make/postgres/Makefile
 MIGRATE_MIGRATIONS_DIR ?= $(BASE_DIR)/scripts/postgres/migration
 MIGRATE_SQL_DSN ?= $(SQL_DSN)
 include scripts/make/go/migrate/Makefile
+include scripts/make/deploy/Makefile
 
 .PHONY: ci
 ci: go.vet go.coverage.text

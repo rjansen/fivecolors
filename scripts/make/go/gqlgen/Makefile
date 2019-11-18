@@ -6,4 +6,4 @@ gqlgen.init:
 
 .PHONY: gqlgen.generate
 gqlgen.generate:
-	go run github.com/99designs/gqlgen -v generate
+	go run github.com/99designs/gqlgen -v generate -c $(GQLGEN_CONFIG)
