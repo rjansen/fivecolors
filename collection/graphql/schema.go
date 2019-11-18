@@ -47,7 +47,6 @@ type ComplexityRoot struct {
 	Card struct {
 		Artist        func(childComplexity int) int
 		Costs         func(childComplexity int) int
-		CreatedAt     func(childComplexity int) int
 		Data          func(childComplexity int) int
 		DeletedAt     func(childComplexity int) int
 		Flavor        func(childComplexity int) int
@@ -69,7 +68,7 @@ type ComplexityRoot struct {
 	}
 
 	Mutation struct {
-		UpsertCards func(childComplexity int, cards []*collection.CardInput) int
+		UpsertCards func(childComplexity int, cards []collection.CardInput) int
 		UpsertSet   func(childComplexity int, set collection.SetInput) int
 	}
 
@@ -89,23 +88,27 @@ type ComplexityRoot struct {
 	Set struct {
 		Alias     func(childComplexity int) int
 		Asset     func(childComplexity int) int
-		CreatedAt func(childComplexity int) int
 		DeletedAt func(childComplexity int) int
 		ID        func(childComplexity int) int
 		Name      func(childComplexity int) int
 		UpdatedAt func(childComplexity int) int
 	}
+
+	UpsertCards struct {
+		AffectedRecords func(childComplexity int) int
+		CommittedAt     func(childComplexity int) int
+	}
 }
 
 type MutationResolver interface {
 	UpsertSet(ctx context.Context, set collection.SetInput) (*collection.Set, error)
-	UpsertCards(ctx context.Context, cards []*collection.CardInput) ([]*collection.Card, error)
+	UpsertCards(ctx context.Context, cards []collection.CardInput) (*collection.UpsertCards, error)
 }
 type QueryResolver interface {
 	Set(ctx context.Context, id string) (*collection.Set, error)
 	Card(ctx context.Context, id string) (*collection.Card, error)
-	SetBy(ctx context.Context, filter collection.SetFilter) ([]*collection.Set, error)
-	CardBy(ctx context.Context, filter collection.CardFilter) ([]*collection.Card, error)
+	SetBy(ctx context.Context, filter collection.SetFilter) ([]collection.Set, error)
+	CardBy(ctx context.Context, filter collection.CardFilter) ([]collection.Card, error)
 }
 
 type executableSchema struct {
@@ -136,13 +139,6 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 		}
 
 		return e.complexity.Card.Costs(childComplexity), true
-
-	case "Card.createdAt":
-		if e.complexity.Card.CreatedAt == nil {
-			break
-		}
-
-		return e.complexity.Card.CreatedAt(childComplexity), true
 
 	case "Card.data":
 		if e.complexity.Card.Data == nil {
@@ -280,7 +276,7 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 			return 0, false
 		}
 
-		return e.complexity.Mutation.UpsertCards(childComplexity, args["cards"].([]*collection.CardInput)), true
+		return e.complexity.Mutation.UpsertCards(childComplexity, args["cards"].([]collection.CardInput)), true
 
 	case "Mutation.upsertSet":
 		if e.complexity.Mutation.UpsertSet == nil {
@@ -377,13 +373,6 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 
 		return e.complexity.Set.Asset(childComplexity), true
 
-	case "Set.createdAt":
-		if e.complexity.Set.CreatedAt == nil {
-			break
-		}
-
-		return e.complexity.Set.CreatedAt(childComplexity), true
-
 	case "Set.deletedAt":
 		if e.complexity.Set.DeletedAt == nil {
 			break
@@ -411,6 +400,20 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 		}
 
 		return e.complexity.Set.UpdatedAt(childComplexity), true
+
+	case "UpsertCards.affectedRecords":
+		if e.complexity.UpsertCards.AffectedRecords == nil {
+			break
+		}
+
+		return e.complexity.UpsertCards.AffectedRecords(childComplexity), true
+
+	case "UpsertCards.committedAt":
+		if e.complexity.UpsertCards.CommittedAt == nil {
+			break
+		}
+
+		return e.complexity.UpsertCards.CommittedAt(childComplexity), true
 
 	}
 	return 0, false
@@ -474,7 +477,44 @@ func (ec *executionContext) introspectType(name string) (*introspection.Type, er
 }
 
 var parsedSchema = gqlparser.MustLoadSchema(
-	&ast.Source{Name: "collection/inputs.graphql", Input: `input RarityInput {
+	&ast.Source{Name: "collection/mutation.graphql", Input: `type Mutation {
+  upsertSet(set: SetInput!): Set
+  upsertCards(cards: [CardInput!]!): UpsertCards
+}
+`},
+	&ast.Source{Name: "collection/query.graphql", Input: `type Query {
+  set(id: ID!): Set
+  card(id: ID!): Card
+  setBy(filter: SetFilter!): [Set!]!
+  cardBy(filter: CardFilter!): [Card!]!
+}
+`},
+	&ast.Source{Name: "collection/types.graphql", Input: `scalar Time
+scalar Map
+
+enum RarityName {
+  Common
+  Uncommon
+  Rare
+  MythicRare
+  Special
+  Land
+  Promo
+  Bonus
+}
+
+enum RarityAlias {
+  C
+  U
+  R
+  M
+  S
+  L
+  P
+  B
+}
+
+input RarityInput {
   id: ID!
   name: RarityName!
   alias: RarityAlias!
@@ -528,43 +568,6 @@ input CardFilter {
   set: SetFilter
   rarity: RarityFilter
 }
-`},
-	&ast.Source{Name: "collection/mutation.graphql", Input: `type Mutation {
-  upsertSet(set: SetInput!): Set
-  upsertCards(cards: [CardInput!]!): [Card!]!
-}
-`},
-	&ast.Source{Name: "collection/query.graphql", Input: `type Query {
-  set(id: ID!): Set
-  card(id: ID!): Card
-  setBy(filter: SetFilter!): [Set!]!
-  cardBy(filter: CardFilter!): [Card!]!
-}
-`},
-	&ast.Source{Name: "collection/types.graphql", Input: `scalar Time
-scalar Map
-
-enum RarityName {
-  Common
-  Uncommon
-  Rare
-  MythicRare
-  Special
-  Land
-  Promo
-  Bonus
-}
-
-enum RarityAlias {
-  C
-  U
-  R
-  M
-  S
-  L
-  P
-  B
-}
 
 type Rarity {
   id: ID!
@@ -577,8 +580,7 @@ type Set {
   name:  String!
   alias: String!
   asset: Map!
-  createdAt: Time!
-  updatedAt: Time
+  updatedAt: Time!
   deletedAt: Time
 }
 
@@ -601,9 +603,13 @@ type Card {
   artist: String
   flavor: String
   data: Map
-  createdAt: Time!
-  updatedAt: Time
+  updatedAt: Time!
   deletedAt: Time
+}
+
+type UpsertCards {
+  affectedRecords: Int!
+  committedAt: Time!
 }
 `},
 )
@@ -615,9 +621,9 @@ type Card {
 func (ec *executionContext) field_Mutation_upsertCards_args(ctx context.Context, rawArgs map[string]interface{}) (map[string]interface{}, error) {
 	var err error
 	args := map[string]interface{}{}
-	var arg0 []*collection.CardInput
+	var arg0 []collection.CardInput
 	if tmp, ok := rawArgs["cards"]; ok {
-		arg0, err = ec.unmarshalNCardInput2ᚕᚖgithubᚗcomᚋrjansenᚋfivecolorsᚋcollectionᚐCardInput(ctx, tmp)
+		arg0, err = ec.unmarshalNCardInput2ᚕgithubᚗcomᚋrjansenᚋfivecolorsᚋcollectionᚐCardInput(ctx, tmp)
 		if err != nil {
 			return nil, err
 		}
@@ -1382,43 +1388,6 @@ func (ec *executionContext) _Card_data(ctx context.Context, field graphql.Collec
 	return ec.marshalOMap2map(ctx, field.Selections, res)
 }
 
-func (ec *executionContext) _Card_createdAt(ctx context.Context, field graphql.CollectedField, obj *collection.Card) (ret graphql.Marshaler) {
-	ctx = ec.Tracer.StartFieldExecution(ctx, field)
-	defer func() {
-		if r := recover(); r != nil {
-			ec.Error(ctx, ec.Recover(ctx, r))
-			ret = graphql.Null
-		}
-		ec.Tracer.EndFieldExecution(ctx)
-	}()
-	rctx := &graphql.ResolverContext{
-		Object:   "Card",
-		Field:    field,
-		Args:     nil,
-		IsMethod: false,
-	}
-	ctx = graphql.WithResolverContext(ctx, rctx)
-	ctx = ec.Tracer.StartFieldResolverExecution(ctx, rctx)
-	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
-		ctx = rctx // use context from middleware stack in children
-		return obj.CreatedAt, nil
-	})
-	if err != nil {
-		ec.Error(ctx, err)
-		return graphql.Null
-	}
-	if resTmp == nil {
-		if !ec.HasError(rctx) {
-			ec.Errorf(ctx, "must not be null")
-		}
-		return graphql.Null
-	}
-	res := resTmp.(time.Time)
-	rctx.Result = res
-	ctx = ec.Tracer.StartFieldChildExecution(ctx)
-	return ec.marshalNTime2timeᚐTime(ctx, field.Selections, res)
-}
-
 func (ec *executionContext) _Card_updatedAt(ctx context.Context, field graphql.CollectedField, obj *collection.Card) (ret graphql.Marshaler) {
 	ctx = ec.Tracer.StartFieldExecution(ctx, field)
 	defer func() {
@@ -1445,12 +1414,15 @@ func (ec *executionContext) _Card_updatedAt(ctx context.Context, field graphql.C
 		return graphql.Null
 	}
 	if resTmp == nil {
+		if !ec.HasError(rctx) {
+			ec.Errorf(ctx, "must not be null")
+		}
 		return graphql.Null
 	}
-	res := resTmp.(*time.Time)
+	res := resTmp.(time.Time)
 	rctx.Result = res
 	ctx = ec.Tracer.StartFieldChildExecution(ctx)
-	return ec.marshalOTime2ᚖtimeᚐTime(ctx, field.Selections, res)
+	return ec.marshalNTime2timeᚐTime(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) _Card_deletedAt(ctx context.Context, field graphql.CollectedField, obj *collection.Card) (ret graphql.Marshaler) {
@@ -1554,22 +1526,19 @@ func (ec *executionContext) _Mutation_upsertCards(ctx context.Context, field gra
 	ctx = ec.Tracer.StartFieldResolverExecution(ctx, rctx)
 	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
 		ctx = rctx // use context from middleware stack in children
-		return ec.resolvers.Mutation().UpsertCards(rctx, args["cards"].([]*collection.CardInput))
+		return ec.resolvers.Mutation().UpsertCards(rctx, args["cards"].([]collection.CardInput))
 	})
 	if err != nil {
 		ec.Error(ctx, err)
 		return graphql.Null
 	}
 	if resTmp == nil {
-		if !ec.HasError(rctx) {
-			ec.Errorf(ctx, "must not be null")
-		}
 		return graphql.Null
 	}
-	res := resTmp.([]*collection.Card)
+	res := resTmp.(*collection.UpsertCards)
 	rctx.Result = res
 	ctx = ec.Tracer.StartFieldChildExecution(ctx)
-	return ec.marshalNCard2ᚕᚖgithubᚗcomᚋrjansenᚋfivecolorsᚋcollectionᚐCard(ctx, field.Selections, res)
+	return ec.marshalOUpsertCards2ᚖgithubᚗcomᚋrjansenᚋfivecolorsᚋcollectionᚐUpsertCards(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) _Query_set(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
@@ -1692,10 +1661,10 @@ func (ec *executionContext) _Query_setBy(ctx context.Context, field graphql.Coll
 		}
 		return graphql.Null
 	}
-	res := resTmp.([]*collection.Set)
+	res := resTmp.([]collection.Set)
 	rctx.Result = res
 	ctx = ec.Tracer.StartFieldChildExecution(ctx)
-	return ec.marshalNSet2ᚕᚖgithubᚗcomᚋrjansenᚋfivecolorsᚋcollectionᚐSet(ctx, field.Selections, res)
+	return ec.marshalNSet2ᚕgithubᚗcomᚋrjansenᚋfivecolorsᚋcollectionᚐSet(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) _Query_cardBy(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
@@ -1736,10 +1705,10 @@ func (ec *executionContext) _Query_cardBy(ctx context.Context, field graphql.Col
 		}
 		return graphql.Null
 	}
-	res := resTmp.([]*collection.Card)
+	res := resTmp.([]collection.Card)
 	rctx.Result = res
 	ctx = ec.Tracer.StartFieldChildExecution(ctx)
-	return ec.marshalNCard2ᚕᚖgithubᚗcomᚋrjansenᚋfivecolorsᚋcollectionᚐCard(ctx, field.Selections, res)
+	return ec.marshalNCard2ᚕgithubᚗcomᚋrjansenᚋfivecolorsᚋcollectionᚐCard(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) _Query___type(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
@@ -2076,43 +2045,6 @@ func (ec *executionContext) _Set_asset(ctx context.Context, field graphql.Collec
 	return ec.marshalNMap2map(ctx, field.Selections, res)
 }
 
-func (ec *executionContext) _Set_createdAt(ctx context.Context, field graphql.CollectedField, obj *collection.Set) (ret graphql.Marshaler) {
-	ctx = ec.Tracer.StartFieldExecution(ctx, field)
-	defer func() {
-		if r := recover(); r != nil {
-			ec.Error(ctx, ec.Recover(ctx, r))
-			ret = graphql.Null
-		}
-		ec.Tracer.EndFieldExecution(ctx)
-	}()
-	rctx := &graphql.ResolverContext{
-		Object:   "Set",
-		Field:    field,
-		Args:     nil,
-		IsMethod: false,
-	}
-	ctx = graphql.WithResolverContext(ctx, rctx)
-	ctx = ec.Tracer.StartFieldResolverExecution(ctx, rctx)
-	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
-		ctx = rctx // use context from middleware stack in children
-		return obj.CreatedAt, nil
-	})
-	if err != nil {
-		ec.Error(ctx, err)
-		return graphql.Null
-	}
-	if resTmp == nil {
-		if !ec.HasError(rctx) {
-			ec.Errorf(ctx, "must not be null")
-		}
-		return graphql.Null
-	}
-	res := resTmp.(time.Time)
-	rctx.Result = res
-	ctx = ec.Tracer.StartFieldChildExecution(ctx)
-	return ec.marshalNTime2timeᚐTime(ctx, field.Selections, res)
-}
-
 func (ec *executionContext) _Set_updatedAt(ctx context.Context, field graphql.CollectedField, obj *collection.Set) (ret graphql.Marshaler) {
 	ctx = ec.Tracer.StartFieldExecution(ctx, field)
 	defer func() {
@@ -2139,12 +2071,15 @@ func (ec *executionContext) _Set_updatedAt(ctx context.Context, field graphql.Co
 		return graphql.Null
 	}
 	if resTmp == nil {
+		if !ec.HasError(rctx) {
+			ec.Errorf(ctx, "must not be null")
+		}
 		return graphql.Null
 	}
-	res := resTmp.(*time.Time)
+	res := resTmp.(time.Time)
 	rctx.Result = res
 	ctx = ec.Tracer.StartFieldChildExecution(ctx)
-	return ec.marshalOTime2ᚖtimeᚐTime(ctx, field.Selections, res)
+	return ec.marshalNTime2timeᚐTime(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) _Set_deletedAt(ctx context.Context, field graphql.CollectedField, obj *collection.Set) (ret graphql.Marshaler) {
@@ -2179,6 +2114,80 @@ func (ec *executionContext) _Set_deletedAt(ctx context.Context, field graphql.Co
 	rctx.Result = res
 	ctx = ec.Tracer.StartFieldChildExecution(ctx)
 	return ec.marshalOTime2ᚖtimeᚐTime(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) _UpsertCards_affectedRecords(ctx context.Context, field graphql.CollectedField, obj *collection.UpsertCards) (ret graphql.Marshaler) {
+	ctx = ec.Tracer.StartFieldExecution(ctx, field)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+		ec.Tracer.EndFieldExecution(ctx)
+	}()
+	rctx := &graphql.ResolverContext{
+		Object:   "UpsertCards",
+		Field:    field,
+		Args:     nil,
+		IsMethod: false,
+	}
+	ctx = graphql.WithResolverContext(ctx, rctx)
+	ctx = ec.Tracer.StartFieldResolverExecution(ctx, rctx)
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.AffectedRecords, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !ec.HasError(rctx) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(int)
+	rctx.Result = res
+	ctx = ec.Tracer.StartFieldChildExecution(ctx)
+	return ec.marshalNInt2int(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) _UpsertCards_committedAt(ctx context.Context, field graphql.CollectedField, obj *collection.UpsertCards) (ret graphql.Marshaler) {
+	ctx = ec.Tracer.StartFieldExecution(ctx, field)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+		ec.Tracer.EndFieldExecution(ctx)
+	}()
+	rctx := &graphql.ResolverContext{
+		Object:   "UpsertCards",
+		Field:    field,
+		Args:     nil,
+		IsMethod: false,
+	}
+	ctx = graphql.WithResolverContext(ctx, rctx)
+	ctx = ec.Tracer.StartFieldResolverExecution(ctx, rctx)
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.CommittedAt, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !ec.HasError(rctx) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(time.Time)
+	rctx.Result = res
+	ctx = ec.Tracer.StartFieldChildExecution(ctx)
+	return ec.marshalNTime2timeᚐTime(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) ___Directive_name(ctx context.Context, field graphql.CollectedField, obj *introspection.Directive) (ret graphql.Marshaler) {
@@ -3705,13 +3714,11 @@ func (ec *executionContext) _Card(ctx context.Context, sel ast.SelectionSet, obj
 			out.Values[i] = ec._Card_flavor(ctx, field, obj)
 		case "data":
 			out.Values[i] = ec._Card_data(ctx, field, obj)
-		case "createdAt":
-			out.Values[i] = ec._Card_createdAt(ctx, field, obj)
+		case "updatedAt":
+			out.Values[i] = ec._Card_updatedAt(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
 				invalids++
 			}
-		case "updatedAt":
-			out.Values[i] = ec._Card_updatedAt(ctx, field, obj)
 		case "deletedAt":
 			out.Values[i] = ec._Card_deletedAt(ctx, field, obj)
 		default:
@@ -3744,9 +3751,6 @@ func (ec *executionContext) _Mutation(ctx context.Context, sel ast.SelectionSet)
 			out.Values[i] = ec._Mutation_upsertSet(ctx, field)
 		case "upsertCards":
 			out.Values[i] = ec._Mutation_upsertCards(ctx, field)
-			if out.Values[i] == graphql.Null {
-				invalids++
-			}
 		default:
 			panic("unknown field " + strconv.Quote(field.Name))
 		}
@@ -3906,15 +3910,45 @@ func (ec *executionContext) _Set(ctx context.Context, sel ast.SelectionSet, obj 
 			if out.Values[i] == graphql.Null {
 				invalids++
 			}
-		case "createdAt":
-			out.Values[i] = ec._Set_createdAt(ctx, field, obj)
+		case "updatedAt":
+			out.Values[i] = ec._Set_updatedAt(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
 				invalids++
 			}
-		case "updatedAt":
-			out.Values[i] = ec._Set_updatedAt(ctx, field, obj)
 		case "deletedAt":
 			out.Values[i] = ec._Set_deletedAt(ctx, field, obj)
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch()
+	if invalids > 0 {
+		return graphql.Null
+	}
+	return out
+}
+
+var upsertCardsImplementors = []string{"UpsertCards"}
+
+func (ec *executionContext) _UpsertCards(ctx context.Context, sel ast.SelectionSet, obj *collection.UpsertCards) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.RequestContext, sel, upsertCardsImplementors)
+
+	out := graphql.NewFieldSet(fields)
+	var invalids uint32
+	for i, field := range fields {
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("UpsertCards")
+		case "affectedRecords":
+			out.Values[i] = ec._UpsertCards_affectedRecords(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				invalids++
+			}
+		case "committedAt":
+			out.Values[i] = ec._UpsertCards_committedAt(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				invalids++
+			}
 		default:
 			panic("unknown field " + strconv.Quote(field.Name))
 		}
@@ -4189,7 +4223,7 @@ func (ec *executionContext) marshalNCard2githubᚗcomᚋrjansenᚋfivecolorsᚋc
 	return ec._Card(ctx, sel, &v)
 }
 
-func (ec *executionContext) marshalNCard2ᚕᚖgithubᚗcomᚋrjansenᚋfivecolorsᚋcollectionᚐCard(ctx context.Context, sel ast.SelectionSet, v []*collection.Card) graphql.Marshaler {
+func (ec *executionContext) marshalNCard2ᚕgithubᚗcomᚋrjansenᚋfivecolorsᚋcollectionᚐCard(ctx context.Context, sel ast.SelectionSet, v []collection.Card) graphql.Marshaler {
 	ret := make(graphql.Array, len(v))
 	var wg sync.WaitGroup
 	isLen1 := len(v) == 1
@@ -4213,7 +4247,7 @@ func (ec *executionContext) marshalNCard2ᚕᚖgithubᚗcomᚋrjansenᚋfivecolo
 			if !isLen1 {
 				defer wg.Done()
 			}
-			ret[i] = ec.marshalNCard2ᚖgithubᚗcomᚋrjansenᚋfivecolorsᚋcollectionᚐCard(ctx, sel, v[i])
+			ret[i] = ec.marshalNCard2githubᚗcomᚋrjansenᚋfivecolorsᚋcollectionᚐCard(ctx, sel, v[i])
 		}
 		if isLen1 {
 			f(i)
@@ -4226,16 +4260,6 @@ func (ec *executionContext) marshalNCard2ᚕᚖgithubᚗcomᚋrjansenᚋfivecolo
 	return ret
 }
 
-func (ec *executionContext) marshalNCard2ᚖgithubᚗcomᚋrjansenᚋfivecolorsᚋcollectionᚐCard(ctx context.Context, sel ast.SelectionSet, v *collection.Card) graphql.Marshaler {
-	if v == nil {
-		if !ec.HasError(graphql.GetResolverContext(ctx)) {
-			ec.Errorf(ctx, "must not be null")
-		}
-		return graphql.Null
-	}
-	return ec._Card(ctx, sel, v)
-}
-
 func (ec *executionContext) unmarshalNCardFilter2githubᚗcomᚋrjansenᚋfivecolorsᚋcollectionᚐCardFilter(ctx context.Context, v interface{}) (collection.CardFilter, error) {
 	return ec.unmarshalInputCardFilter(ctx, v)
 }
@@ -4244,7 +4268,7 @@ func (ec *executionContext) unmarshalNCardInput2githubᚗcomᚋrjansenᚋfivecol
 	return ec.unmarshalInputCardInput(ctx, v)
 }
 
-func (ec *executionContext) unmarshalNCardInput2ᚕᚖgithubᚗcomᚋrjansenᚋfivecolorsᚋcollectionᚐCardInput(ctx context.Context, v interface{}) ([]*collection.CardInput, error) {
+func (ec *executionContext) unmarshalNCardInput2ᚕgithubᚗcomᚋrjansenᚋfivecolorsᚋcollectionᚐCardInput(ctx context.Context, v interface{}) ([]collection.CardInput, error) {
 	var vSlice []interface{}
 	if v != nil {
 		if tmp1, ok := v.([]interface{}); ok {
@@ -4254,22 +4278,14 @@ func (ec *executionContext) unmarshalNCardInput2ᚕᚖgithubᚗcomᚋrjansenᚋf
 		}
 	}
 	var err error
-	res := make([]*collection.CardInput, len(vSlice))
+	res := make([]collection.CardInput, len(vSlice))
 	for i := range vSlice {
-		res[i], err = ec.unmarshalNCardInput2ᚖgithubᚗcomᚋrjansenᚋfivecolorsᚋcollectionᚐCardInput(ctx, vSlice[i])
+		res[i], err = ec.unmarshalNCardInput2githubᚗcomᚋrjansenᚋfivecolorsᚋcollectionᚐCardInput(ctx, vSlice[i])
 		if err != nil {
 			return nil, err
 		}
 	}
 	return res, nil
-}
-
-func (ec *executionContext) unmarshalNCardInput2ᚖgithubᚗcomᚋrjansenᚋfivecolorsᚋcollectionᚐCardInput(ctx context.Context, v interface{}) (*collection.CardInput, error) {
-	if v == nil {
-		return nil, nil
-	}
-	res, err := ec.unmarshalNCardInput2githubᚗcomᚋrjansenᚋfivecolorsᚋcollectionᚐCardInput(ctx, v)
-	return &res, err
 }
 
 func (ec *executionContext) unmarshalNFloat2float64(ctx context.Context, v interface{}) (float64, error) {
@@ -4359,7 +4375,7 @@ func (ec *executionContext) marshalNSet2githubᚗcomᚋrjansenᚋfivecolorsᚋco
 	return ec._Set(ctx, sel, &v)
 }
 
-func (ec *executionContext) marshalNSet2ᚕᚖgithubᚗcomᚋrjansenᚋfivecolorsᚋcollectionᚐSet(ctx context.Context, sel ast.SelectionSet, v []*collection.Set) graphql.Marshaler {
+func (ec *executionContext) marshalNSet2ᚕgithubᚗcomᚋrjansenᚋfivecolorsᚋcollectionᚐSet(ctx context.Context, sel ast.SelectionSet, v []collection.Set) graphql.Marshaler {
 	ret := make(graphql.Array, len(v))
 	var wg sync.WaitGroup
 	isLen1 := len(v) == 1
@@ -4383,7 +4399,7 @@ func (ec *executionContext) marshalNSet2ᚕᚖgithubᚗcomᚋrjansenᚋfivecolor
 			if !isLen1 {
 				defer wg.Done()
 			}
-			ret[i] = ec.marshalNSet2ᚖgithubᚗcomᚋrjansenᚋfivecolorsᚋcollectionᚐSet(ctx, sel, v[i])
+			ret[i] = ec.marshalNSet2githubᚗcomᚋrjansenᚋfivecolorsᚋcollectionᚐSet(ctx, sel, v[i])
 		}
 		if isLen1 {
 			f(i)
@@ -4394,16 +4410,6 @@ func (ec *executionContext) marshalNSet2ᚕᚖgithubᚗcomᚋrjansenᚋfivecolor
 	}
 	wg.Wait()
 	return ret
-}
-
-func (ec *executionContext) marshalNSet2ᚖgithubᚗcomᚋrjansenᚋfivecolorsᚋcollectionᚐSet(ctx context.Context, sel ast.SelectionSet, v *collection.Set) graphql.Marshaler {
-	if v == nil {
-		if !ec.HasError(graphql.GetResolverContext(ctx)) {
-			ec.Errorf(ctx, "must not be null")
-		}
-		return graphql.Null
-	}
-	return ec._Set(ctx, sel, v)
 }
 
 func (ec *executionContext) unmarshalNSetFilter2githubᚗcomᚋrjansenᚋfivecolorsᚋcollectionᚐSetFilter(ctx context.Context, v interface{}) (collection.SetFilter, error) {
@@ -5008,6 +5014,17 @@ func (ec *executionContext) marshalOTime2ᚖtimeᚐTime(ctx context.Context, sel
 		return graphql.Null
 	}
 	return ec.marshalOTime2timeᚐTime(ctx, sel, *v)
+}
+
+func (ec *executionContext) marshalOUpsertCards2githubᚗcomᚋrjansenᚋfivecolorsᚋcollectionᚐUpsertCards(ctx context.Context, sel ast.SelectionSet, v collection.UpsertCards) graphql.Marshaler {
+	return ec._UpsertCards(ctx, sel, &v)
+}
+
+func (ec *executionContext) marshalOUpsertCards2ᚖgithubᚗcomᚋrjansenᚋfivecolorsᚋcollectionᚐUpsertCards(ctx context.Context, sel ast.SelectionSet, v *collection.UpsertCards) graphql.Marshaler {
+	if v == nil {
+		return graphql.Null
+	}
+	return ec._UpsertCards(ctx, sel, v)
 }
 
 func (ec *executionContext) marshalO__EnumValue2ᚕgithubᚗcomᚋ99designsᚋgqlgenᚋgraphqlᚋintrospectionᚐEnumValue(ctx context.Context, sel ast.SelectionSet, v []introspection.EnumValue) graphql.Marshaler {

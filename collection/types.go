@@ -28,8 +28,7 @@ type Card struct {
 	Artist        *string                `json:"artist"`
 	Flavor        *string                `json:"flavor"`
 	Data          map[string]interface{} `json:"data"`
-	CreatedAt     time.Time              `json:"createdAt"`
-	UpdatedAt     *time.Time             `json:"updatedAt"`
+	UpdatedAt     time.Time              `json:"updatedAt"`
 	DeletedAt     *time.Time             `json:"deletedAt"`
 }
 
@@ -85,8 +84,7 @@ type Set struct {
 	Name      string                 `json:"name"`
 	Alias     string                 `json:"alias"`
 	Asset     map[string]interface{} `json:"asset"`
-	CreatedAt time.Time              `json:"createdAt"`
-	UpdatedAt *time.Time             `json:"updatedAt"`
+	UpdatedAt time.Time              `json:"updatedAt"`
 	DeletedAt *time.Time             `json:"deletedAt"`
 }
 
@@ -102,6 +100,11 @@ type SetInput struct {
 	Alias      string                 `json:"alias"`
 	Asset      map[string]interface{} `json:"asset"`
 	CardsCount int                    `json:"cardsCount"`
+}
+
+type UpsertCards struct {
+	AffectedRecords int       `json:"affectedRecords"`
+	CommittedAt     time.Time `json:"committedAt"`
 }
 
 type RarityAlias string
