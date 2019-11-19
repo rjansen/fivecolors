@@ -3,7 +3,8 @@ OS        	          ?= darwin
 ARCH                  ?= amd64
 include scripts/make/go/gotestsum/Makefile
 include scripts/make/go/lint/Makefile
-include scripts/make//go/module/Makefile
+include scripts/make/go/gqlgen/Makefile
+include scripts/make/go/module/Makefile
 CODECOV_COVERAGE_FILE ?= $(GO_COVERAGE_FILE)
 include scripts/make/codecov/Makefile
 export FIRESTORE_EMULATOR_HOST ?= $(FIRESTORE_HOST):$(FIRESTORE_PORT)
@@ -13,6 +14,7 @@ include scripts/make/postgres/Makefile
 MIGRATE_MIGRATIONS_DIR ?= $(BASE_DIR)/scripts/postgres/migration
 MIGRATE_SQL_DSN ?= $(SQL_DSN)
 include scripts/make/go/migrate/Makefile
+include scripts/make/deploy/Makefile
 
 .PHONY: ci
 ci: go.vet go.coverage.text

@@ -1,4 +1,0 @@
-type Mutation {
-  upsertSet(set: SetInput!): Set!
-  upsertCards(cards: [SetCard!]!): [Card!]!
-}

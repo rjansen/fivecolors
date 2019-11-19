@@ -1,0 +1,62 @@
+apiVersion: v1
+kind: Service
+metadata:
+  namespace: fivecolors
+  labels:
+    app: firestore
+  name: firestore
+spec:
+  type: NodePort
+  ports:
+  - port: 8086
+    protocol: TCP
+    targetPort: 8086
+  selector:
+    app: firestore
+---
+apiVersion: extensions/v1beta1
+kind: Deployment
+metadata:
+  namespace: fivecolors
+  labels:
+    app: firestore
+  name: firestore
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: firestore
+  template:
+    metadata:
+      namespace: fivecolors
+      labels:
+        app: firestore
+    spec:
+      containers:
+      - name: firestore
+        env:
+        - name: INSTANCE_ID
+          valueFrom:
+            fieldRef:
+              fieldPath: metadata.name
+        image: rjansen/firestore-emulator
+        imagePullPolicy: IfNotPresent
+        resources:
+          requests:
+            cpu: 64m
+            memory: 128M
+        ports:
+        - containerPort: 8086
+          protocol: TCP
+        readinessProbe:
+          tcpSocket:
+            port: 8086
+          initialDelaySeconds: 5
+          periodSeconds: 10
+        livenessProbe:
+          tcpSocket:
+            port: 8086
+          initialDelaySeconds: 15
+          periodSeconds: 20
+      dnsPolicy: ClusterFirst
+      restartPolicy: Always

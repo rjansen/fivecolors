@@ -1,0 +1,74 @@
+apiVersion: v1
+kind: Service
+metadata:
+  namespace: fivecolors
+  labels:
+    app: graphql
+  name: graphql
+spec:
+  type: NodePort
+  ports:
+  - port: 8080
+    protocol: TCP
+    targetPort: 8080
+    name: http
+  selector:
+    app: graphql
+---
+apiVersion: extensions/v1beta1
+kind: Deployment
+metadata:
+  namespace: fivecolors
+  labels:
+    app: graphql
+  name: graphql
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: graphql
+  template:
+    metadata:
+      namespace: fivecolors
+      labels:
+        app: graphql
+    spec:
+      containers:
+      - name: graphql
+        env:
+        - name: FIRESTORE_EMULATOR_HOST
+          value: firestore:8086
+        - name: INSTANCE_ID
+          valueFrom:
+            fieldRef:
+              fieldPath: metadata.name
+        image: e-pedion/fivecolors-graphql:v0.0.11-36-g1dfd3e1
+        imagePullPolicy: IfNotPresent
+        resources:
+          requests:
+            cpu: 64m
+            memory: 128M
+        livenessProbe:
+          httpGet:
+            path: /healthz
+            port: 8080
+          initialDelaySeconds: 10
+          periodSeconds: 10
+          successThreshold: 1
+          failureThreshold: 3
+          timeoutSeconds: 5
+        readinessProbe:
+          httpGet:
+            path: /healthz
+            port: 8080
+          initialDelaySeconds: 5
+          periodSeconds: 10
+          successThreshold: 1
+          failureThreshold: 3
+          timeoutSeconds: 5
+        ports:
+        - containerPort: 8080
+          name: http
+          protocol: TCP
+      dnsPolicy: ClusterFirst
+      restartPolicy: Always

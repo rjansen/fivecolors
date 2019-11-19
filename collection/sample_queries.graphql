@@ -1,0 +1,76 @@
+mutation UpsertSet {
+  upsertSet(set: {
+    id: "myset"
+    name: "My Set"
+    alias: "mys"
+    cardsCount: 1
+    asset: {}
+  }) {
+    id
+    name
+    createdAt    
+  }
+}
+
+mutation UpsertCards {
+  upsertCards(cards: [
+    {
+      id: "mycard1"
+      name: "My Card 1"
+      types: ["a", "b", "c"]
+      numberCost: 3
+      idExternal: "extmycard1"
+      idRarity: "common"
+      idSet: "myset"
+      idAsset: "imgmycard1"
+    }
+    {
+      id: "mycard2"
+      name: "My Card 2"
+      types: ["a", "b", "c"]
+      numberCost: 3
+      idExternal: "extmycard2"
+      idRarity: "common"
+      idSet: "myset"
+      idAsset: "imgmycard2"
+    }
+    {
+      id: "mycard3"
+      name: "My Card 3"
+      types: ["a", "b", "c"]
+      numberCost: 3
+      idExternal: "extmycard3"
+      idRarity: "common"
+      idSet: "myset"
+      idAsset: "imgmycard3"
+    }
+  ]) {
+    id
+    name
+  }
+}
+
+
+query SetFilter {
+  setBy(filter: {
+    alias: "mys"
+  }) {
+    id
+    name
+    alias
+  }
+}
+
+query CardFilter {
+  cardBy(filter: {
+		types: ["a", "b", "c"]
+  }) {
+    id
+    name
+    types
+    numberCost
+    idAsset
+    idExternal
+  }
+  
+}

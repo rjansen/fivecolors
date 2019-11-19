@@ -1,0 +1,14 @@
+apiVersion: extensions/v1beta1
+kind: Ingress
+metadata:
+  namespace: fivecolors
+  name: ingress
+spec:
+  rules:
+  - host: fivecolors.graphql.local
+    http:
+      paths:
+      - path:
+        backend:
+          serviceName: graphql
+          servicePort: 8080

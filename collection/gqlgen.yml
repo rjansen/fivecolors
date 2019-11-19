@@ -1,0 +1,16 @@
+# Refer to https://gqlgen.com/config/
+# for detailed .gqlgen.yml documentation.
+
+schema:
+- collection/types.graphql
+- collection/query.graphql
+- collection/mutation.graphql
+omit_slice_element_pointers: true
+autobind: []
+exec:
+  filename: collection/graphql/schema.go
+model:
+  filename: collection/types.go
+resolver:
+  filename: collection/graphql/resolver.go
+  type: resolver
