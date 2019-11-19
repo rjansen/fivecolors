@@ -42,7 +42,7 @@ spec:
           valueFrom:
             fieldRef:
               fieldPath: metadata.name
-        image: e-pedion/fivecolors-graphql:v0.0.11-22-gfc2f1fc
+        image: e-pedion/fivecolors-graphql:v0.0.11-36-g1dfd3e1
         imagePullPolicy: IfNotPresent
         resources:
           requests:

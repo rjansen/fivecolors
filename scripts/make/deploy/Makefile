@@ -14,6 +14,11 @@ deploy.default: deploy.build
 deploy.build:
 	docker build -t e-pedion/fivecolors-$(MODULE):$(VERSION) -t e-pedion/fivecolors-$(MODULE):latest -f $(DOCKER_DIR)/$(MODULE)/Dockerfile .
 
+.PHONY: deploy.install.ingress
+deploy.install.ingress:
+	kubectl apply -f https://raw.githubusercontent.com/kubernetes/ingress-nginx/master/deploy/static/mandatory.yaml
+	kubectl apply -f https://raw.githubusercontent.com/kubernetes/ingress-nginx/master/deploy/static/provider/cloud-generic.yaml
+
 .PHONY: deploy.namespace
 deploy.namespace:
 	kubectl create namespace $(NAMESPACE)
@@ -32,7 +37,7 @@ deploy.ingress:
 
 .PHONY: deploy
 deploy: deploy.build
-	kubectl apply -f $(K8S_DIR)/$(MODULE).yml
+	kubectl apply -f $(K8S_DIR)/$(MODULE).yml 
 
 # bkp
 .PHONY: deploy_foward
@@ -42,7 +47,7 @@ deploy_foward:
 .PHONY: deploy_setimg
 deploy_setimg:
 	# i guess that this command overrides the image value to another
-	kubectl create -f $(MODULE).yml --set spec.template.spec.containers[0].image=e-pedion/fivecolors-$(MODULE):$(VERSION)
+	kubectl create -f $(K8S_DIR)/$(MODULE).yml --set spec.template.spec.containers[0].image=e-pedion/fivecolors-$(MODULE):$(VERSION)
 
 redeploy.%: build
 	kubectl set image -n $(NAMESPACE) fivecolors-graphql=e-pedion/fivecolors-graphql:deploy-$*
