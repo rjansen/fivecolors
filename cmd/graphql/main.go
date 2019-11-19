@@ -4,13 +4,11 @@ import (
 	"context"
 	"fmt"
 	"net/http"
-	"os"
-	"os/signal"
-	"time"
 
 	"github.com/rjansen/fivecolors/collection"
 	collectionfirestore "github.com/rjansen/fivecolors/collection/firestore"
 	collectiongraphql "github.com/rjansen/fivecolors/collection/graphql"
+	"github.com/rjansen/fivecolors/server"
 	"github.com/rjansen/l"
 	"github.com/rjansen/migi"
 	"github.com/rjansen/migi/environment"
@@ -75,31 +73,5 @@ func main() {
 	mux.HandleFunc("/healthz", healthCheck)
 	mux.Handle("/query", graphqlHandler)
 
-	server := &http.Server{
-		Addr:    options.bindAddress,
-		Handler: mux,
-	}
-
-	l.Info(ctx, "graphql.server.created")
-
-	stop := make(chan os.Signal, 1)
-	signal.Notify(stop, os.Interrupt, os.Kill)
-
-	go func() {
-		l.Info(ctx, "graphql.server.starting", l.NewValue("address", options.bindAddress))
-
-		if err := server.ListenAndServe(); err != nil {
-			l.Error(
-				ctx, "graphql.server.err", l.NewValue("error", err), l.NewValue("address", options.bindAddress),
-			)
-		}
-	}()
-
-	<-stop
-
-	shutDownCtx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
-	defer cancel()
-	l.Info(ctx, "graphql.server.shutdown")
-	server.Shutdown(shutDownCtx)
-	l.Info(ctx, "graphql.shutdown.gracefully")
+	server.Start(ctx, &http.Server{Addr: options.bindAddress, Handler: mux})
 }

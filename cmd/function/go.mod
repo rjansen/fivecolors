@@ -10,3 +10,5 @@ require (
 	github.com/stretchr/testify v1.3.0
 	gopkg.in/DATA-DOG/go-sqlmock.v1 v1.3.0
 )
+
+go 1.13
